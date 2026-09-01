@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SolarSaathi — Solar Panels on Rent | Zero Upfront Cost</title>
+  <meta name="description" content="Rent rooftop solar on a simple monthly plan. Free installation, 24×7 monitoring, maintenance included. Cut your bill by 70%. India's trusted solar rental partner." />
+  <meta name="theme-color" content="#16a34a" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>☀️</text></svg>" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans','Inter','system-ui','sans-serif'],
+            zentry: ['zentry','sans-serif'],
+            general: ['general','General Sans','sans-serif'],
+          },
+          colors: {
+            border:"hsl(var(--border))",
+            input:"hsl(var(--input))",
+            ring:"hsl(var(--ring))",
+            background:"hsl(var(--background))",
+            foreground:"hsl(var(--foreground))",
+            primary:{ DEFAULT:"hsl(var(--primary))", foreground:"hsl(var(--primary-foreground))"},
+            green:{50:'#f0fdf4',100:'#dcfce7',200:'#bbf7d0',300:'#86efac',400:'#22c55e',500:'#16a34a',600:'#15803d'}
+          },
+          borderRadius:{ lg:"var(--radius)", md:"calc(var(--radius) - 2px)", sm:"calc(var(--radius) - 4px)"}
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- floating glass navbar — exact OP-CS pattern -->
+  <div class="floating-nav-wrap">
+    <div class="floating-nav-inner">
+      <nav class="floating-nav" aria-label="Primary">
+        <a href="#/" class="flex items-center gap-1.5 shrink-0 min-w-0">
+          <span class="grid place-items-center w-8 h-8 rounded-xl bg-gradient-to-br from-green-600 to-emerald-500 text-white shadow-md text-[15px]">☀️</span>
+          <span class="font-zentry font-black uppercase tracking-wider text-[16px] md:text-[18px] text-zinc-900 truncate">Solar<span class="text-green-600">Saathi</span></span>
+          <span class="hidden sm:inline-flex badge badge-pink ml-1.5">RENT • NOT BUY</span>
+        </a>
+
+        <div class="hidden lg:flex items-center gap-1">
+          <div class="nav-group">
+            <a href="#/" class="nav-link" data-nav="home">Home</a>
+            <a href="#/shop" class="nav-link" data-nav="shop">Plans</a>
+            <a href="#/calculator" class="nav-link" data-nav="calculator">Calculator</a>
+            <a href="#/how" class="nav-link" data-nav="how">How it Works</a>
+            <a href="#/about" class="nav-link" data-nav="about">About</a>
+            <a href="#/contact" class="nav-link" data-nav="contact">Contact</a>
+          </div>
+          <div class="hidden lg:flex items-center gap-2 ml-2">
+            <a href="#/bookings" class="btn-ghost text-sm" data-nav="bookings">My Bookings</a>
+            <a href="#/admin" class="btn-ghost text-sm" data-nav="admin">Admin</a>
+            <a href="#/contact" class="btn-primary rounded-full px-5 py-2 text-sm">Book Free Survey →</a>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 lg:hidden">
+          <a href="#/shop" class="btn-primary rounded-full px-4 py-1.5 text-xs">View Plans</a>
+          <button id="menuBtn" aria-label="Open menu" class="w-9 h-9 grid place-items-center rounded-xl bg-white/70 border border-white/40">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+        </div>
+      </nav>
+    </div>
+  </div>
+
+  <!-- mobile drawer -->
+  <div id="mobileOverlay" class="mobile-overlay"></div>
+  <aside id="mobileDrawer" class="mobile-drawer">
+    <div class="p-4 flex items-center justify-between border-b border-green-100">
+      <span class="font-zentry font-black uppercase tracking-wider">SolarSaathi</span>
+      <button id="menuClose" class="w-9 h-9 grid place-items-center rounded-xl bg-zinc-900 text-white">✕</button>
+    </div>
+    <div class="p-4 space-y-1">
+      <a href="#/" class="mobile-link flex items-center gap-3 p-3 rounded-xl hover:bg-green-50"> <span class="w-9 h-9 grid place-items-center rounded-lg bg-green-600 text-white">⌂</span> Home</a>
+      <a href="#/shop" class="mobile-link flex items-center gap-3 p-3 rounded-xl hover:bg-green-50"> <span class="w-9 h-9 grid place-items-center rounded-lg bg-emerald-500 text-white">⚡</span> Rental Plans</a>
+      <a href="#/calculator" class="mobile-link flex items-center gap-3 p-3 rounded-xl hover:bg-green-50"> <span class="w-9 h-9 grid place-items-center rounded-lg bg-emerald-500 text-white">₹</span> Calculator</a>
+      <a href="#/how" class="mobile-link flex items-center gap-3 p-3 rounded-xl hover:bg-green-50"> <span class="w-9 h-9 grid place-items-center rounded-lg bg-violet-500 text-white">◈</span> How it Works</a>
+      <a href="#/about" class="mobile-link flex items-center gap-3 p-3 rounded-xl hover:bg-green-50"> <span class="w-9 h-9 grid place-items-center rounded-lg bg-blue-500 text-white">◎</span> About Us</a>
+      <a href="#/faq" class="mobile-link flex items-center gap-3 p-3 rounded-xl hover:bg-green-50"> <span class="w-9 h-9 grid place-items-center rounded-lg bg-amber-500 text-white">?</span> FAQ</a>
+      <a href="#/contact" class="mobile-link flex items-center gap-3 p-3 rounded-xl hover:bg-green-50"> <span class="w-9 h-9 grid place-items-center rounded-lg bg-teal-500 text-white">✉</span> Contact</a>
+      <a href="#/bookings" class="mobile-link flex items-center gap-3 p-3 rounded-xl hover:bg-green-50"> <span class="w-9 h-9 grid place-items-center rounded-lg bg-blue-500 text-white">◉</span> My Bookings</a>
+      <a href="#/admin" class="mobile-link flex items-center gap-3 p-3 rounded-xl hover:bg-green-50"> <span class="w-9 h-9 grid place-items-center rounded-lg bg-zinc-800 text-white">⚙</span> Admin</a>
+      <a href="#/contact" class="block mt-4 btn-primary w-full justify-center rounded-full">Book Free Site Survey</a>
+      <p class="text-xs text-zinc-500 text-center mt-3">Free installation • No upfront cost • Maintenance on us</p>
+    </div>
+  </aside>
+
+  <!-- hero — video like OP-CS Hero.tsx -->
+  <section class="hero" id="home">
+    <video
+      class="hero-video"
+      autoplay muted loop playsinline preload="metadata"
+      poster="https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=1920&q=80&auto=format&fit=crop"
+      src="https://cdn.pixabay.com/video/2019/08/12/26102-353389085_large.mp4">
+    </video>
+    <!-- fallback image if video fails -->
+    <div class="absolute inset-0" style="background: url('https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=1920&q=80&auto=format&fit=crop') center/cover no-repeat; z-index: -1;"></div>
+    <div class="hero-overlay"></div>
+
+    <div class="hero-center">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-xl border border-white/25 text-white/90 text-xs font-semibold tracking-wide pointer-events-auto">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        1,200+ homes powered • 4.8★ Google rating • MNRE Approved
+      </div>
+      <h1 class="hero-heading">SolarSaathi</h1>
+      <p class="hero-sub pointer-events-auto">Solar panels <b style="color:#fff;">on rent</b> — not on loan.<br/>Zero upfront. Free install. We maintain, you save.</p>
+      <div class="flex flex-wrap items-center justify-center gap-3 mt-6 pointer-events-auto">
+        <a href="#/shop" class="btn-primary rounded-full px-7 py-3 text-base shadow-xl">View Rental Plans →</a>
+        <a href="#/calculator" class="btn-outline-white rounded-full px-7 py-3 text-base">Calculate Savings</a>
+      </div>
+      <div class="flex items-center gap-3 mt-6 pointer-events-auto">
+        <div class="flex -space-x-2">
+          <img src="https://i.pravatar.cc/100?img=11" class="w-8 h-8 rounded-full border-2 border-white object-cover" alt=""/>
+          <img src="https://i.pravatar.cc/100?img=32" class="w-8 h-8 rounded-full border-2 border-white object-cover" alt=""/>
+          <img src="https://i.pravatar.cc/100?img=18" class="w-8 h-8 rounded-full border-2 border-white object-cover" alt=""/>
+        </div>
+        <span class="text-white/80 text-xs">Trusted by families in Pune, Bangalore, Hyderabad</span>
+      </div>
+    </div>
+
+    <!-- bottom stats bar floating like OP guide -->
+    <div class="absolute bottom-0 inset-x-0 z-10">
+      <div class="max-w-6xl mx-auto px-4 pb-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="nova-card p-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-green-600 text-white grid place-items-center">₹</div>
+            <div><div class="font-black text-lg leading-none">₹0</div><div class="text-xs text-zinc-500">Upfront cost</div></div>
+          </div>
+          <div class="nova-card p-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500 text-white grid place-items-center">⚡</div>
+            <div><div class="font-black text-lg leading-none">70%</div><div class="text-xs text-zinc-500">Bill savings</div></div>
+          </div>
+          <div class="nova-card p-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500 text-white grid place-items-center">◐</div>
+            <div><div class="font-black text-lg leading-none">48h</div><div class="text-xs text-zinc-500">Installation</div></div>
+          </div>
+          <div class="nova-card p-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-violet-500 text-white grid place-items-center">◎</div>
+            <div><div class="font-black text-lg leading-none">24×7</div><div class="text-xs text-zinc-500">Monitoring</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- app container — SPA view -->
+  <main id="view" class="min-h-[50vh] bg-[#f0fdf4]"></main>
+
+  <div id="modal-root"></div>
+  <div id="toast-root" class="toast-root"></div>
+
+  <!-- footer — exact green gradient from OP-CS Footer.tsx -->
+  <footer class="footer-gradient">
+    <div class="max-w-7xl mx-auto px-6 py-10 flex flex-col items-center text-center">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="w-10 h-10 rounded-xl bg-white text-green-700 grid place-items-center font-black">☀️</span>
+        <span class="font-zentry font-black uppercase tracking-wider text-lg">SolarSaathi</span>
+        <span class="badge bg-white/15 text-white border border-white/30 text-[10px]">MNRE APPROVED</span>
+      </div>
+      <p class="max-w-xl text-sm leading-relaxed text-white/80 mb-4">
+        Empowering Indian homes with affordable solar — on rent, not on loan.
+        Free installation, insurance & maintenance. Just pay a low monthly rent and watch your bill drop.
+      </p>
+      <a href="#contact" class="inline-block px-6 py-2 rounded-full border border-white/30 text-white/90 text-sm font-medium hover:bg-white/10 transition-colors mb-6">Book a free site survey →</a>
+      <div class="flex items-center gap-4 mb-2">
+        <a href="#" aria-label="Facebook" class="hover:-translate-y-0.5 transition-transform">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" stroke="#fff" stroke-opacity=".6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="#" aria-label="Instagram" class="hover:-translate-y-0.5 transition-transform">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M17 2H7a5 5 0 0 0-5 5v10a5 5 0 0 0 5 5h10a5 5 0 0 0 5-5V7a5 5 0 0 0-5-5" stroke="#fff" stroke-opacity=".6" stroke-width="2"/><path d="M16 11.37a4 4 0 1 1-7.914 1.173A4 4 0 0 1 16 11.37m1.5-4.87h.01" stroke="#fff" stroke-opacity=".6" stroke-width="2"/></svg>
+        </a>
+        <a href="#" aria-label="LinkedIn" class="hover:-translate-y-0.5 transition-transform">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6M6 9H2v12h4zM4 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4" stroke="#fff" stroke-opacity=".6" stroke-width="2"/></svg>
+        </a>
+        <a href="#" aria-label="Twitter" class="hover:-translate-y-0.5 transition-transform">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2" stroke="#fff" stroke-opacity=".6" stroke-width="2"/></svg>
+        </a>
+      </div>
+      <div class="flex flex-wrap gap-4 justify-center text-xs text-white/70 mt-2">
+        <a href="#/" class="hover:text-white">Home</a>
+        <a href="#/shop" class="hover:text-white">Plans & pricing</a>
+        <a href="#/calculator" class="hover:text-white">Calculator</a>
+        <a href="#/how" class="hover:text-white">How it works</a>
+        <a href="#/about" class="hover:text-white">About</a>
+        <a href="#/faq" class="hover:text-white">FAQ</a>
+        <a href="#/contact" class="hover:text-white">Contact</a>
+        <a href="#/bookings" class="hover:text-white">My Bookings</a>
+      </div>
+    </div>
+    <div class="border-t border-white/20">
+      <div class="max-w-7xl mx-auto px-6 py-3 text-center text-sm text-white/70 flex flex-wrap items-center justify-center gap-2">
+        <span>© 2026 SolarSaathi Pvt Ltd. All rights reserved.</span>
+        <span class="hidden sm:inline">•</span>
+        <span>Built with ☀️ for a greener Bharat</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
