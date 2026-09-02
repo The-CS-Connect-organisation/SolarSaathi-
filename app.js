@@ -1,4 +1,4 @@
-/* SolarSaathi v3 — Login • 3 Plans • District Pricing • Dashboard • Admin */
+/* Project S.E.V.A. v3 — Solar Energy for Vendor Access • Login • Plans • District Pricing • Dashboard • Admin */
 (() => {
   // ——— PREMIUM: Loading Screen & Dot Matrix Beacon ———
   (function initLoading(){
@@ -57,7 +57,7 @@
     const title = document.getElementById('prismaTitle');
     if(title && !title.dataset.init){
       title.dataset.init = '1';
-      const lines = ['Solar', 'Saathi'];
+      const lines = ['S.E.V.A.', ''];
       let delay = 0;
       title.innerHTML = lines.map((word, li) => {
         const chars = word.split('').map((ch, ci) => {
@@ -276,53 +276,53 @@
 
   // ——— District Grid Pricing ———
   const DISTRICTS = [
-    { name:'Pune', state:'Maharashtra', gridRate:8.5 },
-    { name:'Mumbai', state:'Maharashtra', gridRate:9.2 },
-    { name:'Nagpur', state:'Maharashtra', gridRate:7.8 },
-    { name:'Nashik', state:'Maharashtra', gridRate:8.0 },
-    { name:'Bangalore', state:'Karnataka', gridRate:8.8 },
-    { name:'Mysore', state:'Karnataka', gridRate:7.5 },
-    { name:'Hyderabad', state:'Telangana', gridRate:7.2 },
-    { name:'Warangal', state:'Telangana', gridRate:6.8 },
-    { name:'Delhi NCR', state:'Delhi', gridRate:9.5 },
-    { name:'Gurugram', state:'Haryana', gridRate:9.0 },
-    { name:'Indore', state:'Madhya Pradesh', gridRate:7.0 },
-    { name:'Bhopal', state:'Madhya Pradesh', gridRate:7.2 },
-    { name:'Jaipur', state:'Rajasthan', gridRate:6.5 },
-    { name:'Ahmedabad', state:'Gujarat', gridRate:6.8 },
-    { name:'Chennai', state:'Tamil Nadu', gridRate:7.5 },
-    { name:'Kolkata', state:'West Bengal', gridRate:8.0 },
-    { name:'Lucknow', state:'Uttar Pradesh', gridRate:7.8 },
-    { name:'Patna', state:'Bihar', gridRate:7.0 },
-    { name:'Chandigarh', state:'Punjab', gridRate:7.5 },
-    { name:'Ranchi', state:'Jharkhand', gridRate:6.8 },
+    { name:'Pune', state:'Maharashtra', gridRate:90 },
+    { name:'Mumbai', state:'Maharashtra', gridRate:100 },
+    { name:'Nagpur', state:'Maharashtra', gridRate:85 },
+    { name:'Nashik', state:'Maharashtra', gridRate:88 },
+    { name:'Bangalore', state:'Karnataka', gridRate:95 },
+    { name:'Mysore', state:'Karnataka', gridRate:80 },
+    { name:'Hyderabad', state:'Telangana', gridRate:78 },
+    { name:'Warangal', state:'Telangana', gridRate:72 },
+    { name:'Delhi NCR', state:'Delhi', gridRate:110 },
+    { name:'Gurugram', state:'Haryana', gridRate:100 },
+    { name:'Indore', state:'Madhya Pradesh', gridRate:75 },
+    { name:'Bhopal', state:'Madhya Pradesh', gridRate:80 },
+    { name:'Jaipur', state:'Rajasthan', gridRate:70 },
+    { name:'Ahmedabad', state:'Gujarat', gridRate:72 },
+    { name:'Chennai', state:'Tamil Nadu', gridRate:82 },
+    { name:'Kolkata', state:'West Bengal', gridRate:88 },
+    { name:'Lucknow', state:'Uttar Pradesh', gridRate:85 },
+    { name:'Patna', state:'Bihar', gridRate:75 },
+    { name:'Chandigarh', state:'Punjab', gridRate:80 },
+    { name:'Ranchi', state:'Jharkhand', gridRate:72 },
   ];
   const SOLAR_DISCOUNT = 0.65; // 65% of grid pricing
 
   // ——— 3 Plans ———
   const PLANS = [
     {
-      id:'micro', name:'Micro', tagline:'For Pani Puri & Street Vendors',
+      id:'micro', name:'Micro', tagline:'For Street Vendors & Rural Households',
       icon:'🛒', color:'bg-amber-500',
-      desc:'Perfect for small shops, food carts, pani puri stalls, tea vendors. Low-cost solar to power your lights, fans & small appliances.',
+      desc:'Built for India\'s 75 lakh+ registered street vendors. Power your tea stall, food cart, pani puri stand or small shop. Zero upfront cost, pay a micro daily fee via UPI.',
       capacityRange:'0.5 kW – 2 kW',
-      features:['Powers 2-4 lights + fans','Small fridge compatible','Zero downtime for your stall','Quick 24h install','Bill reduction 50-65%','Free cleaning monthly'],
+      features:['Powers 2-4 lights + fans + small fridge','Zero downtime for your business','Quick 24h install at your stall','Pay ₹45-50/day via UPI — 35% less than diesel','Free cleaning & maintenance monthly','We own the asset, you own the savings'],
       img:'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=640&q=80&auto=format&fit=crop',
     },
     {
-      id:'residential', name:'Residential', tagline:'For Homes in Villages & Towns',
+      id:'residential', name:'Residential', tagline:'For Rural Homes & Tier-2 Towns',
       icon:'🏠', color:'bg-green-600',
-      desc:'Full home solar for village houses, town homes & small apartments. Power your TV, fridge, washing machine & lights with free sunshine.',
+      desc:'For rural households and tier-2 cities where the grid is unreliable. Hours of daily power cuts overlap with peak hours — S.E.V.A. gives you uninterrupted power at 65% of grid cost.',
       capacityRange:'2 kW – 8 kW',
-      features:['Powers entire home','AC + fridge + geyser','Net-metering included','DISCOM paperwork handled','Quarterly cleaning','25-year panel warranty'],
+      features:['Powers entire home — lights, fan, TV, fridge','Zero upfront — we install, you pay daily','UPI micro-payments, no paperwork burden','We handle DISCOM, net-metering & subsidy','Quarterly cleaning & 24×7 monitoring','25-year panel warranty, full maintenance'],
       img:'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=640&q=80&auto=format&fit=crop',
     },
     {
-      id:'industrial', name:'Industrial', tagline:'High-Grade for Factories & Offices',
+      id:'industrial', name:'Industrial', tagline:'For Markets, Cold Storage & Warehouses',
       icon:'🏭', color:'bg-blue-600',
-      desc:'Heavy-duty solar for factories, warehouses, cold storage & large offices. LT/HT panel compatible, 3-phase inverter, dedicated relationship manager.',
+      desc:'Heavy-duty solar for market complexes, cold storage, warehouses and large commercial setups. 3-phase inverter, dedicated relationship manager, SCADA-ready monitoring.',
       capacityRange:'10 kW – 100 kW',
-      features:['3-phase industrial inverter','LT/HT panel compatible','Dedicated account manager','Subsidy & CEIG handled','Priority service SLA','Monthly generation report'],
+      features:['3-phase industrial inverter, LT/HT compatible','Dedicated account manager & SLA','Subsidy, CEIG & all paperwork handled','Monthly generation & savings report','Priority service with 24h response','SCADA-ready real-time monitoring'],
       img:'https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=640&q=80&auto=format&fit=crop',
     }
   ];
@@ -397,12 +397,14 @@
 
   // ——— FAQ data ———
   const faqs = [
-    { q:'Why rent instead of buying?', a:'Buying needs ₹2-6 lakh upfront + you handle service. Renting = ₹0 upfront, we own the system, you just pay a low monthly rent that is 65% of your grid bill. We do install, permissions, net-metering, cleaning, repairs and insurance.' },
-    { q:'How is the rent calculated?', a:'We take your district grid rate, apply our guaranteed 65% discount, and that becomes your per-unit charge. Select your district and units on our plans page to see the exact comparison.' },
-    { q:'What happens if I shift house?', a:'We relocate the system to your new address for a small fee, or transfer the plan to the new tenant. No lock-in after 12 months.' },
-    { q:'Who handles maintenance?', a:'We do — quarterly cleaning, inverter, wiring, earthing checks, plus 24×7 monitoring. If generation dips, our team is auto-dispatched.' },
-    { q:'Can I request removal?', a:'Yes. Submit a removal request from your dashboard. Our team will contact you within 48 hours to schedule disconnection. 30-day notice after 12-month lock-in.' },
-    { q:'Is there a lock-in period?', a:'12-month lock-in at fixed rate. Thereafter you can cancel anytime with 30 days notice. Rate escalates only 3% yearly vs 7-8% tariff hike.' },
+    { q:'What is Project S.E.V.A.?', a:'S.E.V.A. stands for Solar Energy for Vendor Access. It\'s a pioneering pay-as-you-go solar model designed specifically for India\'s informal street economy. We install compact solar + battery systems at zero upfront cost, and you pay a micro daily fee via UPI — just 65% of what you\'d spend on diesel or the unreliable grid.' },
+    { q:'Why not just buy solar panels?', a:'A standard solar kit costs ₹18,000–₹20,000 upfront. Street vendors lack collateral, are often unregistered, and can\'t access formal credit. S.E.V.A. removes this barrier entirely — we own the asset, handle all maintenance, and you pay only for the power you consume.' },
+    { q:'How much do I actually save?', a:'Vendors typically spend ₹90–₹120/day on diesel generators or informal grid taps. S.E.V.A. charges just ₹45–₹50/day — that\'s an immediate saving of up to ₹2,100/month or ₹20,520/year. The economics sell themselves.' },
+    { q:'How does the daily UPI payment work?', a:'Every day, a micro-fee (₹45–₹50) is charged via UPI for the power you consume. No cash collection, no manual billing. India\'s deep UPI penetration makes this frictionless — zero behavior change required from you.' },
+    { q:'What if the grid is already available?', a:'Connection doesn\'t equal reliability. Rural areas and tier-2 cities experience hours of daily power cuts — especially during peak evening business hours. S.E.V.A. replaces both diesel and unreliable grid with consistent, clean power.' },
+    { q:'Who handles maintenance and repairs?', a:'We do — everything. Quarterly cleaning, inverter checks, wiring, earthing, plus 24×7 remote monitoring. If generation dips, our local maintenance agents are auto-dispatched. You never lift a finger.' },
+    { q:'Can I cancel or relocate?', a:'12-month lock-in at the fixed rate. After that, cancel anytime with 30 days notice. If you shift location, we relocate the system for a small fee or transfer the plan to the new tenant.' },
+    { q:'Is this available in my area?', a:'S.E.V.A. is initially launching in Maharashtra, Karnataka, Telangana, Delhi NCR, Madhya Pradesh, Rajasthan, Gujarat, Tamil Nadu, West Bengal, UP, Bihar, Punjab and Jharkhand. We cover 20+ districts across India and expanding rapidly.' },
   ];
 
   // ——— Attach reveal observer ———
@@ -421,7 +423,7 @@
           <div class="text-center mb-8">
             <span class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-600 to-emerald-500 text-white grid place-items-center mx-auto text-3xl shadow-lg shadow-green-600/20">☀️</span>
             <h1 class="text-3xl font-black mt-4">Welcome back</h1>
-            <p class="text-zinc-500 mt-1 text-sm">Login to manage your solar plan</p>
+            <p class="text-zinc-500 mt-1 text-sm">Login to manage your S.E.V.A. solar plan</p>
           </div>
           <div class="nova-card p-6 md:p-8">
             <form id="loginForm" class="space-y-4">
@@ -439,7 +441,7 @@
               </div>
             </form>
             <div class="mt-4 p-3 rounded-xl bg-zinc-50 border border-zinc-100 text-xs text-zinc-500">
-              <b>Demo admin:</b> admin@solarsaathi.in / admin123<br/>
+              <b>Demo admin:</b> admin@solarsaathi.in / admin123
               <b>Register</b> as a user to see the customer dashboard.
             </div>
           </div>
@@ -469,7 +471,7 @@
           <div class="text-center mb-8">
             <span class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-600 to-emerald-500 text-white grid place-items-center mx-auto text-3xl shadow-lg shadow-green-600/20">☀️</span>
             <h1 class="text-3xl font-black mt-4">Create account</h1>
-            <p class="text-zinc-500 mt-1 text-sm">Join 1,200+ homes saving with solar</p>
+            <p class="text-zinc-500 mt-1 text-sm">Join vendors & households saving with S.E.V.A.</p>
           </div>
           <div class="nova-card p-6 md:p-8">
             <form id="regForm" class="space-y-4">
@@ -533,8 +535,8 @@
       <section class="wrap section">
         <div class="text-center max-w-2xl mx-auto">
           <span class="badge badge-pink">3 Plans for Everyone</span>
-          <h1 class="text-3xl md:text-4xl font-black mt-2">Pick your <span class="gradient-text">solar plan</span></h1>
-          <p class="text-zinc-500 mt-2">From street vendors to factories — we have a plan. Charged at <b>65% of your grid rate</b>.</p>
+          <h1 class="text-3xl md:text-4xl font-black mt-2">Pick your <span class="gradient-text">S.E.V.A. plan</span></h1>
+          <p class="text-zinc-500 mt-2">From street vendors to market complexes — zero upfront, pay daily via UPI at <b>65% of diesel/grid rate</b>.</p>
         </div>
         <div class="grid md:grid-cols-3 gap-6 mt-8 max-w-5xl mx-auto">
           ${PLANS.map((p,i)=>`
@@ -570,8 +572,8 @@
         <div class="nova-card p-6 md:p-8 mt-10 max-w-5xl mx-auto">
           <div class="text-center mb-6">
             <span class="badge badge-pink">Transparent Pricing</span>
-            <h2 class="text-2xl font-black mt-2">How we charge — <span class="gradient-text">65% of grid rate</span></h2>
-            <p class="text-zinc-500 text-sm mt-1">Select your district and see the exact comparison</p>
+            <h2 class="text-2xl font-black mt-2">How we charge — <span class="gradient-text">65% of diesel/grid rate</span></h2>
+            <p class="text-zinc-500 text-sm mt-1">Vendors spend ₹90-120/day on diesel. S.E.V.A. charges ₹45-50/day. See your savings.</p>
           </div>
           <div class="grid md:grid-cols-2 gap-6">
             <div class="space-y-4">
@@ -668,7 +670,7 @@
           <div class="text-center text-xs text-zinc-500">
             Plan: <b>${esc(plan.name)}</b> (${esc(plan.capacityRange)}) • ${esc(units)} units × ₹${ourRate} = ₹${fmt(ourBill)}/mo
           </div>                <button class="btn-primary btn-ripple w-full rounded-full book-now-btn" data-plan="${planType.value}" data-district="${dName}" data-units="${units}">
-            ${isLoggedIn() ? 'Book this plan now →' : 'Login to book →'}
+            ${isLoggedIn() ? 'Start S.E.V.A. now →' : 'Login to book →'}
           </button>
         </div>
       `;
@@ -924,7 +926,7 @@
                     <div class="text-xs text-red-500">${u.monthUsed} units \u00d7 ₹${d.gridRate}/unit</div>
                   </div>
                   <div class="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-200">
-                    <div class="text-xs text-emerald-600 font-semibold uppercase">With Solar (SolarSaathi)</div>
+                    <div class="text-xs text-emerald-600 font-semibold uppercase">With S.E.V.A. Solar</div>
                     <div class="font-black text-2xl text-emerald-700 mt-1">${fmt(u.ourBill)}</div>
                     <div class="text-xs text-emerald-500">${u.monthUsed} units \u00d7 ₹${b.rate}/unit</div>
                   </div>
@@ -1547,7 +1549,7 @@
       const data = { bookings: store.bookings, requests: store.requests, notifications: store.notifications, users: getUsers() };
       const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.href=url; a.download='solarSaathi-admin-export.json'; a.click();
+      const a=document.createElement('a'); a.href=url; a.download='seva-admin-export.json'; a.click();
       URL.revokeObjectURL(url);
     });
     document.getElementById('logoutBtn')?.addEventListener('click', logout);
@@ -1569,53 +1571,53 @@
     <div class="page-enter">
       <section class="wrap py-6">
         <div class="nova-card p-3 flex flex-wrap items-center justify-center gap-4 md:gap-8 text-xs text-zinc-600">
-          <span class="inline-flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-emerald-500 text-white grid place-items-center text-[11px]">✓</span> MNRE Approved Channel Partner</span>
+          <span class="inline-flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-emerald-500 text-white grid place-items-center text-[11px]">✓</span> First-of-its-kind Pay-As-You-Go Solar</span>
           <span class="hidden md:inline h-4 w-px bg-green-100"></span>
-          <span>⚡ 2.4 MW installed</span>
+          <span>⚡ 75 Lakh+ Vendors Registered</span>
           <span class="hidden md:inline h-4 w-px bg-green-100"></span>
-          <span>★ 4.8/5 (1.1k reviews)</span>
-          <span class="badge badge-success">65% of grid rate</span>
+          <span>UPI Micro-Payments</span>
+          <span class="badge badge-success">35% less than diesel/grid</span>
         </div>
       </section>
 
       <section class="wrap pb-6">
         <div class="grid md:grid-cols-3 gap-4">
           <div class="nova-card nova-card-stat p-6">
-            <p class="text-xs font-bold tracking-widest text-green-600 uppercase">Live impact</p>
+            <p class="text-xs font-bold tracking-widest text-green-600 uppercase">Live Impact</p>
             <div class="mt-3 grid grid-cols-3 gap-3 text-center">
-              <div><div class="font-black text-2xl">1200+</div><div class="text-xs text-zinc-500">Homes</div></div>
-              <div><div class="font-black text-2xl">48h</div><div class="text-xs text-zinc-500">Install</div></div>
-              <div><div class="font-black text-2xl">₹0</div><div class="text-xs text-zinc-500">Upfront</div></div>
+              <div><div class="font-black text-2xl">₹0</div><div class="text-xs text-zinc-500">Upfront Cost</div></div>
+              <div><div class="font-black text-2xl">₹45</div><div class="text-xs text-zinc-500">Daily via UPI</div></div>
+              <div><div class="font-black text-2xl">35%</div><div class="text-xs text-zinc-500">Instant Savings</div></div>
             </div>
           </div>
           <div class="nova-card p-0 overflow-hidden md:col-span-2">
             <div class="grid md:grid-cols-2 h-full">
               <div class="p-6">
-                <span class="badge badge-pink">Why SolarSaathi?</span>
-                <h3 class="mt-3 text-xl font-black leading-tight">Power at <span class="gradient-text">65% of grid rate</span>.</h3>
-                <p class="text-sm text-zinc-500 mt-2">Select your district, see grid pricing, and we guarantee 35% savings from day 1.</p>
+                <span class="badge badge-pink">Why S.E.V.A.?</span>
+                <h3 class="mt-3 text-xl font-black leading-tight">Solar for <span class="gradient-text">every vendor</span>.</h3>
+                <p class="text-sm text-zinc-500 mt-2">Zero upfront cost. Pay a micro daily fee via UPI. We install, own & maintain the system.</p>
                 <div class="mt-4 space-y-2 text-sm">
-                  <div class="flex gap-2"><span class="text-emerald-500">✔</span> 3 plans: Micro, Residential, Industrial</div>
-                  <div class="flex gap-2"><span class="text-emerald-500">✔</span> Free cleaning, repairs & insurance</div>
-                  <div class="flex gap-2"><span class="text-emerald-500">✔</span> Monitor on app, 24×7 support</div>
+                  <div class="flex gap-2"><span class="text-emerald-500">✔</span> ₹0 upfront — we own the hardware</div>
+                  <div class="flex gap-2"><span class="text-emerald-500">✔</span> Daily UPI payment — ₹45-50 vs ₹90-120 diesel</div>
+                  <div class="flex gap-2"><span class="text-emerald-500">✔</span> Free install, maintenance & 24×7 monitoring</div>
                 </div>
               </div>
               <div class="bg-gradient-to-br from-zinc-900 to-zinc-800 text-white p-6 flex flex-col justify-between relative overflow-hidden">
                 <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-white/10 blur-2xl"></div>
                 <div>
-                  <p class="text-xs tracking-widest opacity-60 uppercase">Quick example</p>
+                  <p class="text-xs tracking-widest opacity-60 uppercase">Real Vendor Savings</p>
                   <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div class="rounded-xl bg-white/10 p-3">
-                      <div class="opacity-60 text-xs">Grid rate (Pune)</div>
-                      <div class="font-bold text-amber-300">₹8.50/unit</div>
+                      <div class="opacity-60 text-xs">Diesel/Grid daily</div>
+                      <div class="font-bold text-amber-300">₹90–120/day</div>
                     </div>
                     <div class="rounded-xl bg-green-600 p-3">
-                      <div class="opacity-90 text-xs">Our rate</div>
-                      <div class="font-bold">₹5.53/unit</div>
+                      <div class="opacity-90 text-xs">S.E.V.A. daily</div>
+                      <div class="font-bold">₹45–50/day</div>
                     </div>
                   </div>
                 </div>
-                <div class="text-xs opacity-70 mt-4">For 300 units: Grid ₹2,550 vs Us ₹1,658 → Save ₹892/mo</div>
+                <div class="text-xs opacity-70 mt-4">Save up to ₹2,100/month • ₹20,520/year — money for a second cart or child's education</div>
               </div>
             </div>
           </div>
@@ -1626,8 +1628,8 @@
       <section class="wrap section">
         <div class="text-center max-w-2xl mx-auto">
           <span class="badge badge-pink">3 Plans</span>
-          <h2 class="text-3xl font-black mt-2">Solar for <span class="gradient-text">everyone</span></h2>
-          <p class="text-zinc-500 mt-2">From pani puri stalls to factories — choose your plan, select your district, see your savings.</p>
+          <h2 class="text-3xl font-black mt-2">Solar for <span class="gradient-text">every vendor</span></h2>
+          <p class="text-zinc-500 mt-2">From tea stalls to market complexes — zero upfront, pay daily via UPI, see your savings instantly.</p>
         </div>
         <div class="grid md:grid-cols-3 gap-4 mt-8">
           ${PLANS.map((p,i)=>`
@@ -1652,9 +1654,9 @@
         </div>
         <div class="steps mt-8">
           ${[
-            {n:'01', t:'Pick plan & district', d:'Choose Micro, Residential or Industrial. Select your district to see grid vs our rate.'},
-            {n:'02', t:'Book & we install', d:'Free survey, DISCOM filing, install in 48h. Zero upfront cost.'},
-            {n:'03', t:'Pay 65% of grid rate', d:'Your bill drops by 35%. Free maintenance, cleaning & monitoring included.'},
+            {n:'01', t:'Choose your plan', d:'Pick Micro (vendors), Residential (homes) or Industrial. Select your district — see grid vs S.E.V.A. rate.'},
+            {n:'02', t:'We install for free', d:'Free survey, DISCOM filing, system install in 48h. Zero upfront cost — ₹0 today.'},
+            {n:'03', t:'Pay daily via UPI', d:'Micro daily fee of ₹45-50 — just 65% of diesel/grid. Free maintenance & monitoring included.'},
           ].map((s,i)=>`
             <div class="nova-card p-6 flex gap-4 stagger-in" style="transition-delay:${i*0.15}s">
               <div class="step-num">${s.n}</div>
@@ -1665,12 +1667,12 @@
 
       <!-- Testimonials -->
       <section class="wrap section pt-0">
-        <h3 class="text-xl font-bold flex items-center gap-2"><span class="w-8 h-8 rounded-xl bg-green-600 text-white grid place-items-center">❝</span> Loved by homeowners</h3>
+        <h3 class="text-xl font-bold flex items-center gap-2"><span class="w-8 h-8 rounded-xl bg-green-600 text-white grid place-items-center">❝</span> Loved by vendors & households</h3>
         <div class="grid md:grid-cols-3 gap-4 mt-4">
           ${[
-            { name:'Priya & Rohan', city:'Pune • Residential', text:'Bill went from ₹5,200 to ₹1,658. We pay 65% of grid rate — team installed in 1 day.', avatar:'https://i.pravatar.cc/100?img=5', stars:5 },
-            { name:'Ravi Pani Puri Wala', city:'Indore • Micro', text:'My stall now has lights and a fridge running on solar. Rent is less than what I paid for diesel generator.', avatar:'https://i.pravatar.cc/100?img=15', stars:5 },
-            { name:'Sunita Industries', city:'Bangalore • Industrial', text:'For our factory, their rate is 35% less than BESCOM. Saving ₹18,000 every month.', avatar:'https://i.pravatar.cc/100?img=26', stars:5 },
+            { name:'Ramesh Tea Stall', city:'Pune • Micro', text:'I was spending ₹100/day on a diesel generator. S.E.V.A. charges me ₹48/day via UPI. I save ₹1,500 every month — enough to buy a second cart.', avatar:'https://i.pravatar.cc/100?img=15', stars:5 },
+            { name:'Sunita & Family', city:'Indore • Residential', text:'Power cuts ruined our evening business hours. Now S.E.V.A. runs our lights, fan and fridge — zero downtime, zero upfront cost.', avatar:'https://i.pravatar.cc/100?img=5', stars:5 },
+            { name:'Anil Market Complex', city:'Bangalore • Industrial', text:'For our cold storage, S.E.V.A. is 35% cheaper than BESCOM. Saving ₹18,000 every month. The daily UPI deduction is seamless.', avatar:'https://i.pravatar.cc/100?img=26', stars:5 },
           ].map((t,i)=>`
             <div class="nova-card p-5 stagger-in" style="transition-delay:${i*0.12}s">
               <div class="flex gap-1 text-amber-500 text-sm">${'★'.repeat(t.stars)}</div>
@@ -1705,8 +1707,8 @@
         <div class="nova-card p-8 md:p-12 text-center bg-gradient-to-br from-green-600 to-emerald-500 text-white stagger-in relative overflow-hidden">
           <div class="glow-orb" style="width:300px;height:300px;background:rgba(255,255,255,0.1);top:-50%;right:-20%;"></div>
           <div class="glow-orb" style="width:200px;height:200px;background:rgba(255,255,255,0.08);bottom:-30%;left:-10%;animation-delay:3s;"></div>
-          <h2 class="text-3xl font-black">Start saving with solar today</h2>
-          <p class="text-white/80 mt-2">65% of grid rate • Zero upfront • Free install</p>
+          <h2 class="text-3xl font-black">Start saving with S.E.V.A. today</h2>
+          <p class="text-white/80 mt-2">Zero upfront • Pay ₹45-50/day via UPI • Free install & maintenance</p>
           <div class="flex flex-wrap gap-3 justify-center mt-6">
             ${isLoggedIn() ?
               `<a href="#/plans" class="btn-primary btn-ripple rounded-full px-8 py-3 bg-white text-green-700 border-white">Choose your plan →</a>` :
@@ -1737,13 +1739,14 @@
       <section class="wrap section">
         <div class="max-w-3xl mx-auto text-center">
           <span class="badge badge-pink">How it works</span>
-          <h1 class="text-3xl md:text-4xl font-black mt-2">From survey to <span class="gradient-text">savings</span> in 72 hours</h1>
+          <h1 class="text-3xl md:text-4xl font-black mt-2">From zero to <span class="gradient-text">solar-powered</span> in 48 hours</h1>
+          <p class="text-zinc-500 mt-3 leading-relaxed">No upfront cost. No paperwork burden. No maintenance worries. We handle everything — you just pay a micro daily fee via UPI.</p>
         </div>
         <div class="grid md:grid-cols-3 gap-4 mt-8">
           ${[
-            {n:'01', title:'Pick plan & district', desc:'Choose Micro, Residential or Industrial. Select your district — we show grid rate vs our 65% rate.'},
-            {n:'02', title:'Free survey & install', desc:'Engineer visits, drone shade scan, install in 48h. DISCOM, net-meter, subsidy — all handled.'},
-            {n:'03', title:'Pay 65% of grid rate', desc:'Your monthly charge is 35% less than grid. Free cleaning, repairs, monitoring included.'},
+            {n:'01', title:'Choose your plan & district', desc:'Pick Micro (vendors), Residential (homes) or Industrial (markets). Select your district — see diesel/grid rate vs S.E.V.A. rate instantly.'},
+            {n:'02', title:'Free survey & 48h install', desc:'Our engineer visits your stall/home. We handle DISCOM filing, net-metering, subsidy paperwork. System installed in 48 hours. ₹0 upfront.'},
+            {n:'03', title:'Pay daily via UPI', desc:'Micro fee of ₹45-50/day — just 65% of diesel/grid cost. Free cleaning, repairs, monitoring included. We own the asset, you own the savings.'},
           ].map(s=>`
             <div class="nova-card p-6 text-center">
               <div class="step-num mx-auto">${s.n}</div>
@@ -1751,6 +1754,24 @@
               <p class="text-sm text-zinc-500 mt-1">${s.desc}</p>
             </div>
           `).join('')}
+        </div>
+        <div class="nova-card p-6 md:p-8 mt-8 max-w-3xl mx-auto">
+          <h3 class="font-black text-lg text-center">The Problem We Solve</h3>
+          <div class="grid md:grid-cols-2 gap-6 mt-4 text-sm text-zinc-600 leading-relaxed">
+            <div>
+              <p>While national electrification numbers appear high on paper, <b>connection does not equal reliability</b>. Rural areas and tier-2 cities frequently experience hours of daily power cuts. For a street vendor running a tea or food stall, these outages perfectly overlap with peak evening business hours.</p>
+            </div>
+            <div>
+              <p>To keep their businesses running, vendors are forced to rely on expensive diesel. With fuel prices constantly rising, running a small generator is a massive daily drain on their already thin margins. Even when the grid is technically present, it is <b>effectively unusable</b> during the exact hours these micro entrepreneurs need it most.</p>
+            </div>
+          </div>
+          <div class="mt-4 p-4 rounded-xl bg-green-50 border border-green-100">
+            <p class="text-sm text-green-800 font-semibold text-center">"Everyone has the right to clean energy. Solar power should never be a luxury that hardworking vendors cannot afford."</p>
+          </div>
+        </div>
+        <div class="nova-card p-6 md:p-8 mt-6 max-w-3xl mx-auto">
+          <h3 class="font-black text-lg text-center">Our Philosophy</h3>
+          <p class="text-sm text-zinc-600 leading-relaxed mt-3 text-center">S.E.V.A. treats solar energy as an <b>affordable daily service</b> rather than a heavy hardware purchase. We install the system, retain ownership of the asset, and take full responsibility for its maintenance. Crucially, S.E.V.A. does not just replace diesel — we also provide a direct, reliable alternative to the grid. Users pay a micro daily fee calculated at just 65% of the standard grid or diesel rate.</p>
         </div>
       </section>
     </div>`;
@@ -1762,14 +1783,63 @@
     <div class="page-enter">
       <section class="wrap section">
         <div class="max-w-3xl mx-auto text-center">
-          <span class="badge badge-pink">About SolarSaathi</span>
-          <h1 class="text-3xl md:text-4xl font-black mt-2">Green energy <span class="gradient-text">at 65% of grid rate</span></h1>
-          <p class="text-zinc-500 mt-3 leading-relaxed">We started SolarSaathi because solar should be affordable for everyone — from pani puri vendors to large factories. We own the asset, you rent the savings at 65% of your grid rate.</p>
+          <span class="badge badge-pink">About Project S.E.V.A.</span>
+          <h1 class="text-3xl md:text-4xl font-black mt-2">Solar Energy for <span class="gradient-text">Vendor Access</span></h1>
+          <p class="text-zinc-500 mt-3 leading-relaxed">Project S.E.V.A. is a pioneering, first-of-its-kind pay-as-you-go solar model designed to bridge the gap between India's informal street economy and clean energy. We provide compact, zero upfront cost solar and battery systems to street vendors and rural households.</p>
+        </div>
+        <div class="nova-card p-6 md:p-8 mt-8 max-w-3xl mx-auto">
+          <h3 class="font-black text-lg">The Vision</h3>
+          <p class="text-sm text-zinc-600 leading-relaxed mt-3">Our core philosophy is simple: <b>everyone has the right to clean energy</b>. Solar power should never be a luxury that hardworking vendors cannot afford. Instead of buying expensive hardware, users pay a micro daily fee via UPI for the power they consume. Our solution is significantly more affordable than existing alternatives, priced at 35% less than their current daily spend on diesel generators or their struggles with an unusable, unreliable grid.</p>
+        </div>
+        <div class="nova-card p-6 md:p-8 mt-6 max-w-3xl mx-auto">
+          <h3 class="font-black text-lg">The Financing Barrier</h3>
+          <p class="text-sm text-zinc-600 leading-relaxed mt-3">The traditional solar market completely ignores street vendors. A standard solar and battery kit requires a massive upfront investment of roughly ₹18,000 to ₹20,000. Vendors lack collateral, are often unregistered, and cannot access formal credit to cover these costs. S.E.V.A. solves this financing bottleneck by treating solar energy as an affordable daily service rather than a heavy hardware purchase.</p>
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="border-b border-zinc-200"><th class="text-left py-2 pr-4 font-semibold">Aspect</th><th class="text-left py-2 pr-4 font-semibold">Traditional Solar</th><th class="text-left py-2 font-semibold text-green-700">S.E.V.A. Model</th></tr></thead>
+              <tbody class="text-zinc-600">
+                <tr class="border-b border-zinc-100"><td class="py-2 pr-4">Upfront Hardware Cost</td><td class="py-2 pr-4">₹18,000 – ₹20,000</td><td class="py-2 font-semibold text-green-700">₹0</td></tr>
+                <tr class="border-b border-zinc-100"><td class="py-2 pr-4">Asset Ownership</td><td class="py-2 pr-4">User (requires bank loan)</td><td class="py-2 font-semibold text-green-700">S.E.V.A.</td></tr>
+                <tr><td class="py-2 pr-4">Maintenance Burden</td><td class="py-2 pr-4">User's responsibility</td><td class="py-2 font-semibold text-green-700">Fully covered by S.E.V.A.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="nova-card p-6 md:p-8 mt-6 max-w-3xl mx-auto">
+          <h3 class="font-black text-lg">Why Now?</h3>
+          <p class="text-sm text-zinc-600 leading-relaxed mt-3">This is a truly unprecedented approach — the first of its kind in the market. We are leveraging three converging trends that make this the perfect time for an advanced pay-as-you-go solar model:</p>
+          <div class="mt-4 space-y-3">
+            <div class="flex gap-3"><span class="w-8 h-8 rounded-lg bg-green-600 text-white grid place-items-center shrink-0 text-xs font-bold">1</span><div><p class="text-sm font-semibold">Government Formalization</p><p class="text-xs text-zinc-500 mt-0.5">The government has recently formalized and registered over 75 lakh street vendors, creating a massive and trackable customer base.</p></div></div>
+            <div class="flex gap-3"><span class="w-8 h-8 rounded-lg bg-green-600 text-white grid place-items-center shrink-0 text-xs font-bold">2</span><div><p class="text-sm font-semibold">UPI Deep Penetration</p><p class="text-xs text-zinc-500 mt-0.5">The deep penetration of UPI across India makes frictionless, daily micro payments technologically viable without the overhead of manual collection.</p></div></div>
+            <div class="flex gap-3"><span class="w-8 h-8 rounded-lg bg-green-600 text-white grid place-items-center shrink-0 text-xs font-bold">3</span><div><p class="text-sm font-semibold">Ignored Street-Level Segment</p><p class="text-xs text-zinc-500 mt-0.5">While rooftop solar is growing rapidly nationwide, it is entirely restricted to wealthy homeowners and commercial buildings. S.E.V.A. captures the ignored street-level segment with a model built specifically for their daily cash flow.</p></div></div>
+          </div>
+        </div>
+        <div class="nova-card p-6 md:p-8 mt-6 max-w-3xl mx-auto">
+          <h3 class="font-black text-lg">The Economic Engine</h3>
+          <p class="text-sm text-zinc-600 leading-relaxed mt-3">The pricing strategy requires zero behavior change or consumer education because it offers an immediate, massive cash saving from day one. While the user currently spends roughly ₹90 to ₹120 daily on erratic diesel generators and exorbitant informal grid tapping fees, S.E.V.A. charges a fixed daily fee of just ₹45 to ₹50.</p>
+          <p class="text-sm text-zinc-600 leading-relaxed mt-2">This gives the vendor an immediate, guaranteed saving of up to <b>₹2,100 per month</b> while providing a superior, uninterrupted power supply.</p>
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="border-b border-zinc-200"><th class="text-left py-2 pr-4 font-semibold">Month</th><th class="text-left py-2 pr-4 font-semibold">Status Quo (Diesel/Grid)</th><th class="text-left py-2 font-semibold text-green-700">S.E.V.A. Cost</th></tr></thead>
+              <tbody class="text-zinc-600">
+                <tr class="border-b border-zinc-100"><td class="py-2 pr-4">Month 1</td><td class="py-2 pr-4">₹3,150</td><td class="py-2 font-semibold text-green-700">₹1,440</td></tr>
+                <tr class="border-b border-zinc-100"><td class="py-2 pr-4">Month 3</td><td class="py-2 pr-4">₹9,450</td><td class="py-2 font-semibold text-green-700">₹4,320</td></tr>
+                <tr class="border-b border-zinc-100"><td class="py-2 pr-4">Month 6</td><td class="py-2 pr-4">₹18,900</td><td class="py-2 font-semibold text-green-700">₹8,640</td></tr>
+                <tr class="border-b border-zinc-100"><td class="py-2 pr-4">Month 9</td><td class="py-2 pr-4">₹28,350</td><td class="py-2 font-semibold text-green-700">₹12,960</td></tr>
+                <tr><td class="py-2 pr-4 font-bold">Month 12</td><td class="py-2 pr-4 font-bold">₹37,800</td><td class="py-2 font-bold text-green-700">₹17,280</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-4 p-4 rounded-xl bg-gradient-to-r from-green-600 to-emerald-500 text-white text-center">
+            <p class="text-sm opacity-90">By Month 12, the gap between diesel and S.E.V.A. equals</p>
+            <p class="font-black text-2xl">₹20,520 in direct savings</p>
+            <p class="text-xs opacity-80 mt-1">For a street vendor, that's capital for a second cart, child's education, or emergency fund.</p>
+          </div>
         </div>
         <div class="grid md:grid-cols-3 gap-4 mt-8">
-          <div class="nova-card p-5 text-center"><div class="w-10 h-10 rounded-xl bg-green-600 text-white grid place-items-center mx-auto">🛒</div><h4 class="font-bold mt-3">Micro Plans</h4><p class="text-sm text-zinc-500 mt-1">For street vendors, food carts, small shops</p></div>
-          <div class="nova-card p-5 text-center"><div class="w-10 h-10 rounded-xl bg-emerald-500 text-white grid place-items-center mx-auto">🏠</div><h4 class="font-bold mt-3">Residential</h4><p class="text-sm text-zinc-500 mt-1">For homes in villages and towns</p></div>
-          <div class="nova-card p-5 text-center"><div class="w-10 h-10 rounded-xl bg-blue-600 text-white grid place-items-center mx-auto">🏭</div><h4 class="font-bold mt-3">Industrial</h4><p class="text-sm text-zinc-500 mt-1">High-grade for factories & large offices</p></div>
+          <div class="nova-card p-5 text-center"><div class="w-10 h-10 rounded-xl bg-green-600 text-white grid place-items-center mx-auto">🛒</div><h4 class="font-bold mt-3">Micro Plans</h4><p class="text-sm text-zinc-500 mt-1">For street vendors, food carts, tea stalls — the backbone of India's economy</p></div>
+          <div class="nova-card p-5 text-center"><div class="w-10 h-10 rounded-xl bg-emerald-500 text-white grid place-items-center mx-auto">🏠</div><h4 class="font-bold mt-3">Residential</h4><p class="text-sm text-zinc-500 mt-1">For rural households and tier-2 cities with unreliable grid</p></div>
+          <div class="nova-card p-5 text-center"><div class="w-10 h-10 rounded-xl bg-blue-600 text-white grid place-items-center mx-auto">🏭</div><h4 class="font-bold mt-3">Industrial</h4><p class="text-sm text-zinc-500 mt-1">For market complexes, cold storage & warehouses</p></div>
         </div>
       </section>
     </div>`;
@@ -1782,8 +1852,8 @@
       <section class="wrap section">
         <div class="max-w-3xl mx-auto text-center">
           <span class="badge badge-pink">Contact</span>
-          <h1 class="text-3xl md:text-4xl font-black mt-2">We're <span class="gradient-text">here to help</span></h1>
-          <p class="text-zinc-500 mt-2">Book a survey, ask a question, or just say hi — we reply within 2 hours.</p>
+          <h1 class="text-3xl md:text-4xl font-black mt-2">Ready to <span class="gradient-text">go solar?</span></h1>
+          <p class="text-zinc-500 mt-2">Book a free survey, ask about S.E.V.A., or partner with us — we reply within 2 hours.</p>
         </div>
         <div class="max-w-2xl mx-auto mt-8">
           <div class="nova-card p-6">
@@ -1794,9 +1864,10 @@
               </div>
               <input class="input-field" name="email" type="email" placeholder="Email (optional)" />
               <select class="input-field" name="topic">
-                <option>Book free survey</option>
-                <option>Existing booking</option>
-                <option>Partner with us</option>
+                <option>Book free S.E.V.A. survey</option>
+                <option>Existing S.E.V.A. booking</option>
+                <option>Partner / Franchise with us</option>
+                <option>Media / Press inquiry</option>
                 <option>Other</option>
               </select>
               <textarea class="input-field" name="msg" rows="4" placeholder="Your message" required></textarea>
