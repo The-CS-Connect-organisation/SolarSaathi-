@@ -693,6 +693,13 @@
     attachReveal();
   }
 
+  // Redirect the post-login dashboard into the embedded Sunalyzer monitor
+  function goSunalyzer(){
+    location.hash = '#/sunalyzer';
+    location.reload();
+  }
+  window.goSunalyzer = goSunalyzer;
+
   function renderRegister(){
     $view.innerHTML = `
     <div class="page-enter">
@@ -751,8 +758,7 @@
       saveUsers(users);
       saveSession({ id:user.id, name:user.name, email:user.email, phone:user.phone, role:user.role, district:user.district });
       toast('Account created! Welcome, '+name,'success');
-      location.hash='#/dashboard';
-      location.reload();
+      goSunalyzer();
     });
     attachReveal();
   }
@@ -1487,6 +1493,32 @@
       });
     });
 
+    attachReveal();
+  }
+
+  // ===================== SUNALYZER MONITOR (post-login view) =====================
+
+  // Full-screen embedded Sunalyzer solar monitor. Served with a JS shim so it
+  // works with zero backend; a real Sunalyzer API can be pointed at later.
+  function renderSunalyzer(){
+    if(!isLoggedIn()){ location.hash='#/login'; return; }
+    const user = currentUser();
+    $view.innerHTML = `
+    <div style="position:fixed;inset:0;z-index:9999;background:#fff;">
+      <iframe id="sunalyzerFrame" src="Sunalyzer/site/index.html" style="border:0;width:100%;height:100%;"></iframe>
+    </div>`;
+
+    // Listen for the "back to site" button inside the monitor
+    window.addEventListener('message', (e)=>{
+      if(e.data === 'sunalyzer:home'){
+        location.hash = '#/';
+        location.reload();
+      }
+      if(e.data === 'sunalyzer:plans'){
+        window.parent.location.hash = '#/plans';
+      }
+
+    });
     attachReveal();
   }
 
@@ -2416,7 +2448,8 @@
     if(path.startsWith('/login')) return pageTransition(renderLogin);
     if(path.startsWith('/register')) return pageTransition(renderRegister);
     if(path.startsWith('/plans')) return pageTransition(renderPlans);
-    if(path.startsWith('/dashboard')) return pageTransition(renderDashboard);
+    if(path.startsWith('/sunalyzer')) return pageTransition(renderSunalyzer);
+    if(path.startsWith('/dashboard')) return pageTransition(renderSunalyzer);
     if(path.startsWith('/admin')) return pageTransition(renderAdmin);
     if(path.startsWith('/how')) return pageTransition(renderHow);
     if(path.startsWith('/about')) return pageTransition(renderAbout);
