@@ -342,6 +342,187 @@
   if(!store.payments) store.payments = [];
   function saveStore(){ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
 
+  // ——— Seeded Demo Data (deterministic) ———
+  // Creates 10 extra demo users, bookings across all statuses, payment history,
+  // removal requests and notifications so the dashboard + admin panel feel "real".
+  const SEED_FLAG = 'solarSaathi.seeded.v3';
+  function mulberry32(a){
+    return function(){
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const SEEDED_NAMES = [
+    ['Sunita Devi','Varanasi','residential'],['Mohammed Irfan','Hyderabad','industrial'],
+    ['Kavita Sharma','Jaipur','residential'],['Pappu Chai Wale','Lucknow','micro'],
+    ['Deepak Patil','Nashik','micro'],['Anjali Verma','Delhi NCR','residential'],
+    ['Ramesh Industries','Ahmedabad','industrial'],['Fatima Begum','Hyderabad','micro'],
+    ['Vikram Singh','Gurugram','residential'],['Lakshmi Stores','Chennai','micro']
+  ];
+  function seedDemoData(force){
+    if(!force && localStorage.getItem(SEED_FLAG)) return;
+    const rnd = mulberry32(20260908);
+    const users = getUsers();
+    const mkId = pre => pre + '-' + Math.floor(rnd()*46656).toString(36).toUpperCase().padStart(3,'0');
+    const newUsers = [];
+    SEEDED_NAMES.forEach(([name, district, plan], i) => {
+      const id = 'USR-' + (100 + i);
+      const slug = name.toLowerCase().replace(/[^a-z]+/g,'.');
+      if(!users.find(u=>u.email === slug + '@demo.in')){
+        users.push({
+          id, name, email: slug + '@demo.in', phone: '9' + Math.floor(100000000 + rnd()*899999999),
+          password: '123', role: 'user', district,
+          created: new Date(Date.now() - Math.floor(30 + rnd()*330) * 86400000).toISOString().slice(0,10)
+        });
+      }
+      newUsers.push(id);
+    });
+    saveUsers(users);
+
+    // bookings: mostly Live (generating usage + payments), a few early-stage
+    const statuses = ['Live','Live','Live','Live','Live','Live','Survey scheduled','Pending survey','Resources allotted','Installed'];
+    statuses.forEach((status, i) => {
+      const [name, district, planId] = SEEDED_NAMES[i];
+      const d = DISTRICTS.find(x=>x.name===district) || DISTRICTS[0];
+      const plan = PLANS.find(p=>p.id===planId);
+      const units = planId==='micro' ? Math.round(60 + rnd()*140)
+                  : planId==='industrial' ? Math.round(500 + rnd()*900)
+                  : Math.round(180 + rnd()*320);
+      const rate = Math.round(d.gridRate * SOLAR_DISCOUNT * 100) / 100;
+      const monthlyAmount = Math.round(units * rate);
+      const created = new Date(Date.now() - Math.floor(10 + rnd()*320) * 86400000);
+      const installedDate = status==='Live' || status==='Installed'
+        ? new Date(created.getTime() + Math.floor(14 + rnd()*20) * 86400000).toISOString()
+        : null;
+      const eq = EQUIPMENT[planId] || {};
+      const bk = {
+        id: mkId('BK'), userId: 'USR-' + (100 + i), planId, planName: plan.name,
+        district, units, rate, monthlyAmount,
+        name, phone: '9' + Math.floor(100000000 + rnd()*899999999),
+        address: (planId==='industrial' ? 'Plot ' : 'H.No ') + Math.floor(1+rnd()*99) + ', ' + district,
+        pincode: String(Math.floor(110000 + rnd()*489999)),
+        date: new Date(created.getTime() + 86400000).toISOString().slice(0,10),
+        roofType: planId==='industrial' ? 'Open ground' : (rnd()>0.5 ? 'Flat RCC' : 'Tin shed'),
+        note: '', status, created: created.toISOString()
+      };
+      if(['Resources allotted','Installation scheduled','Installed','Live'].includes(status)){
+        bk.resources = {
+          panels: eq.panels || '', inverter: eq.inverter || '', mounting: eq.mounting || '',
+          wiring: eq.wiring || '', misc: eq.misc || '',
+          techName: ['Rajesh Kumar','Suresh Yadav','Amit Chauhan','Pritam Sahu'][i % 4],
+          techPhone: '9' + Math.floor(100000000 + rnd()*899999999),
+          installDate: installedDate ? installedDate.slice(0,10) : new Date(Date.now() + 7*86400000).toISOString().slice(0,10),
+          allotDate: created.toISOString()
+        };
+      }
+      if(installedDate) bk.installedDate = installedDate;
+      store.bookings.push(bk);
+    });
+
+    // give the demo login user (Raju Bhai) a live plan so their dashboard is fully populated
+    if(users.find(u=>u.id==='USR-user1') && !store.bookings.find(b=>b.userId==='USR-user1')){
+      const d = DISTRICTS.find(x=>x.name==='Pune') || DISTRICTS[0];
+      const plan = PLANS.find(p=>p.id==='residential');
+      const units = 300;
+      const rate = Math.round(d.gridRate * SOLAR_DISCOUNT * 100) / 100;
+      const created = new Date(Date.now() - 150 * 86400000);
+      const installed = new Date(created.getTime() + 18 * 86400000).toISOString();
+      const eq = EQUIPMENT.residential;
+      store.bookings.push({
+        id: mkId('BK'), userId: 'USR-user1', planId: 'residential', planName: plan.name,
+        district: 'Pune', units, rate, monthlyAmount: Math.round(units * rate),
+        name: 'Raju Bhai', phone: '9876543210', address: 'H.No 12, Anna Chowk, Pune', pincode: '411001',
+        date: new Date(created.getTime() + 86400000).toISOString().slice(0,10),
+        roofType: 'Flat RCC', note: '', status: 'Live',
+        resources: { panels: eq.panels, inverter: eq.inverter, mounting: eq.mounting, wiring: eq.wiring, misc: eq.misc,
+          techName: 'Rajesh Kumar', techPhone: '9820034567', installDate: installed.slice(0,10), allotDate: created.toISOString() },
+        installedDate: installed, created: created.toISOString()
+      });
+    }
+
+    // payment history for every Live booking (up to last 5 months, 1 skipped bill)
+    let payIdx = 0;
+    store.bookings.filter(b=>b.status==='Live' && b.userId!=='USR-user1').forEach(b=>{
+      const methods = ['upi','auto','netbanking','card'];
+      const months = Math.min(5, 1 + Math.floor(rnd()*4));
+      for(let m=months; m>=1; m--){
+        if(m===3 && rnd()>0.5) continue; // simulate a skipped month
+        const dt = new Date(); dt.setMonth(dt.getMonth() - (m-1)); dt.setDate(4 + Math.floor(rnd()*5));
+        payIdx++;
+        store.payments.push({
+          id: 'PAY-' + String(payIdx).padStart(4,'0'),
+          bookingId: b.id, userId: b.userId, amount: b.monthlyAmount,
+          method: methods[Math.floor(rnd()*methods.length)],
+          status: 'Paid', created: dt.toISOString()
+        });
+      }
+    });
+
+    // guarantee a rich payment history for the demo user (Raju Bhai)
+    const rajuBk = store.bookings.find(b=>b.userId==='USR-user1');
+    if(rajuBk && !store.payments.find(p=>p.bookingId===rajuBk.id)){
+      for(let m=5; m>=1; m--){
+        if(m===3) continue; // one skipped month for realism
+        const dt = new Date(); dt.setMonth(dt.getMonth() - (m-1)); dt.setDate(4 + m);
+        payIdx++;
+        store.payments.push({
+          id: 'PAY-' + String(payIdx).padStart(4,'0'), bookingId: rajuBk.id, userId: rajuBk.userId,
+          amount: rajuBk.monthlyAmount, method: ['upi','auto','upi','netbanking'][m % 4],
+          status: 'Paid', created: dt.toISOString()
+        });
+      }
+    }
+
+    // removal / support requests
+    const liveBks = store.bookings.filter(b=>b.status==='Live');
+    store.requests.push(
+      { id: mkId('REQ'), userId: liveBks[0].userId, userName: liveBks[0].name, type:'Removal', bookingId: liveBks[0].id,
+        planName: liveBks[0].planName, district: liveBks[0].district, reason:'Moving to new house',
+        note:'Shifting to another city next month.', status:'Pending', created: new Date(Date.now() - 2*86400000).toISOString() },
+      { id: mkId('REQ'), userId: liveBks[1].userId, userName: liveBks[1].name, type:'Support', bookingId: liveBks[1].id,
+        planName: liveBks[1].planName, district: liveBks[1].district, reason:'Panel cleaning overdue',
+        note:'Generation seems low since last week.', status:'Approved', adminNote:'Cleaning crew scheduled.',
+        created: new Date(Date.now() - 6*86400000).toISOString() }
+    );
+
+    // a few notifications so the bell isn't empty
+    const kb = store.bookings[2], db = store.bookings[4], rb = store.bookings[6];
+    addNotification('new_booking', 'New Booking!', `${kb.name} booked ${kb.planName} for ${kb.district} — ${kb.units} units/mo. ${fmt(kb.monthlyAmount)}/mo`, kb.id);
+    addNotification('status', 'Survey Completed', `Survey completed for ${db.name} — ${db.district}. Proposal ready.`, db.id);
+    addNotification('installed', 'Installation Complete', `${rb.name} — ${rb.district} is now live!`, rb.id);
+
+    saveStore();
+    localStorage.setItem(SEED_FLAG, '1');
+    console.log('[SolarSaathi] Demo data seeded:', store.bookings.length, 'bookings,', store.payments.length, 'payments');
+  }
+
+  // ——— Deterministic usage + billing analytics per booking ———
+  function seededUsageSeries(bk, months){
+    const d = DISTRICTS.find(x=>x.name===bk.district) || DISTRICTS[0];
+    // seed unique per booking so numbers stay stable across reloads
+    const rnd = mulberry32(
+      bk.id.split('').reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0, 7) + 13
+    );
+    const gridRate = d.gridRate;
+    const ourRate = Math.round(gridRate * SOLAR_DISCOUNT * 100) / 100;
+    const now = new Date();
+    const arr = [];
+    for(let i=months-1; i>=0; i--){
+      const dt = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const seasonal = 1 + 0.16 * Math.sin(((dt.getMonth() - 3) / 12) * Math.PI * 2); // summer peak
+      const used = Math.max(8, Math.round(bk.units * seasonal * (0.86 + rnd()*0.22)));
+      const gridBill = Math.round(used * gridRate);
+      const ourBill = Math.round(used * ourRate);
+      arr.push({
+        label: dt.toLocaleString('en-IN', { month:'short' }),
+        used, gridRate, ourRate, gridBill, ourBill, saved: gridBill - ourBill
+      });
+    }
+    return arr;
+  }
+
   // ——— Notification helpers ———
   function addNotification(type, title, message, bookingId){
     store.notifications.unshift({
@@ -360,6 +541,7 @@
     residential: { panels: '4-16 × 450W Monocrystalline', inverter: '3-8kW Hybrid Inverter', mounting: 'Rooftop aluminium rails', wiring: 'DC/AC cables + MC4 connectors', meter: 'Net meter (bi-directional)', misc: 'Earthing kit, surge protector, DC isolator' },
     industrial: { panels: '20-200 × 550W Monocrystalline', inverter: '10-100kW String Inverter', mounting: 'Heavy-duty ground/roof mount', wiring: 'HT/LT cables, combiner box', meter: 'CT-meter for 3-phase', misc: 'Earthing kit, lightning arrestor, SCADA-ready' }
   };
+  seedDemoData(); // run here so EQUIPMENT (above) is initialized first
   function allotResources(bookingId, data){
     const bk = store.bookings.find(b=>b.id===bookingId);
     if(!bk) return;
@@ -878,6 +1060,40 @@
             <div class="font-black text-2xl mt-1">${fmt(activeBookings.reduce((a,b)=>a+(Math.round(b.units*district.gridRate)-b.monthlyAmount),0))}</div>
             <div class="text-xs text-emerald-600">${fmt(activeBookings.reduce((a,b)=>a+(Math.round(b.units*district.gridRate)-b.monthlyAmount),0)*12)}/year</div>
           </div>
+          ${liveBookings.length > 0 ? (()=>{
+            const allSeries = liveBookings.map(b=>seededUsageSeries(b,6));
+            const totals = allSeries.reduce((acc,s)=>({
+              used: acc.used + s.reduce((a,x)=>a+x.used,0),
+              grid: acc.grid + s.reduce((a,x)=>a+x.gridBill,0),
+              ours: acc.ours + s.reduce((a,x)=>a+x.ourBill,0),
+              saved: acc.saved + s.reduce((a,x)=>a+x.saved,0)
+            }), {used:0,grid:0,ours:0,saved:0});
+            return `
+            <div class="nova-card nova-card-stat p-5 md:col-span-2">
+              <div class="text-xs tracking-widest text-zinc-500 uppercase">Grid vs Solar — last 6 months</div>
+              <div class="font-black text-2xl mt-1 text-emerald-600">${fmt(totals.saved)} saved</div>
+              <div class="text-xs text-zinc-500 mb-2">Grid would have cost <b class="text-red-500 line-through">${fmt(totals.grid)}</b> — you paid <b class="text-emerald-600">${fmt(totals.ours)}</b></div>
+              <div class="chart-bars">
+                ${allSeries[0].map((_,mi)=>{
+                  const grid = allSeries.reduce((a,s)=>a+s[mi].gridBill,0);
+                  const ours = allSeries.reduce((a,s)=>a+s[mi].ourBill,0);
+                  const max = allSeries.reduce((a,s)=>a+Math.max(...s.map(x=>x.gridBill)),0) || 1;
+                  return `
+                  <div class="chart-pair" title="${allSeries[0][mi].label}: grid ${fmt(grid)} vs solar ${fmt(ours)}">
+                    <div class="chart-bars-stack">
+                      <div class="chart-bar bar-grid" style="height:${Math.max(6,Math.round(grid/max*100))}%"></div>
+                      <div class="chart-bar bar-solar" style="height:${Math.max(6,Math.round(ours/max*100))}%"></div>
+                    </div>
+                    <div class="chart-label">${allSeries[0][mi].label}</div>
+                  </div>`;
+                }).join('')}
+              </div>
+              <div class="flex items-center gap-4 mt-2 text-[10px] text-zinc-500">
+                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:#fca5a5"></span> Grid bill</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:#10b981"></span> SolarSaathi bill</span>
+              </div>
+            </div>`;
+          })() : ''}
         </div>
 
         <!-- Installation Progress Tracker -->
@@ -1012,6 +1228,67 @@
           }).join('')}
         </div>
         ` : ''}
+
+        <!-- Revenue & Payment History -->
+        ${(() => {
+          const myPays = store.payments.filter(p=>p.userId===user.id).sort((a,b)=>new Date(b.created)-new Date(a.created));
+          const totalPaid = myPays.filter(p=>p.status==='Paid').reduce((a,p)=>a+p.amount,0);
+          const gridWouldBe = liveBookings.reduce((a,b)=>{
+            const s = seededUsageSeries(b,6); return a + s.reduce((x,y)=>x+y.gridBill,0);
+          }, 0);
+          const solarPaid6 = liveBookings.reduce((a,b)=>{
+            const s = seededUsageSeries(b,6); return a + s.reduce((x,y)=>x+y.ourBill,0);
+          }, 0);
+          return `
+          <div class="nova-card p-6 mt-6">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h3 class="font-bold flex items-center gap-2">
+                <span class="w-8 h-8 rounded-xl bg-emerald-500 text-white grid place-items-center">₹</span>
+                Your Consumption & Payments
+              </h3>
+              <div class="flex flex-wrap gap-4">
+                <div class="px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-100">
+                  <div class="text-[10px] uppercase tracking-widest text-emerald-600">Total paid (all time)</div>
+                  <div class="font-black text-lg">${fmt(totalPaid)}</div>
+                </div>
+                <div class="px-4 py-2 rounded-xl bg-red-50 border border-red-100">
+                  <div class="text-[10px] uppercase tracking-widest text-red-500">Grid would cost (6 mo)</div>
+                  <div class="font-black text-lg line-through decoration-red-400">${fmt(gridWouldBe)}</div>
+                </div>
+                <div class="px-4 py-2 rounded-xl bg-green-50 border border-green-100">
+                  <div class="text-[10px] uppercase tracking-widest text-emerald-600">You paid (6 mo)</div>
+                  <div class="font-black text-lg">${fmt(solarPaid6)}</div>
+                </div>
+                <div class="px-4 py-2 rounded-xl bg-amber-50 border border-amber-100">
+                  <div class="text-[10px] uppercase tracking-widest text-amber-600">Saved (6 mo)</div>
+                  <div class="font-black text-lg text-amber-600">${fmt(gridWouldBe - solarPaid6)}</div>
+                </div>
+              </div>
+            </div>
+            ${myPays.length === 0 ? '<p class="text-sm text-zinc-500">No payments yet — they appear once your plan goes live.</p>' : `
+            <div class="overflow-x-auto max-h-64 overflow-y-auto rounded-xl border border-zinc-100">
+              <table class="w-full text-sm">
+                <thead class="sticky top-0 bg-[#f0fdf4]">
+                  <tr><th class="text-left p-3">Payment ID</th><th class="text-left p-3">For Booking</th><th class="text-left p-3">Month</th><th class="text-left p-3">Method</th><th class="text-left p-3">Amount</th><th class="text-left p-3">Status</th></tr>
+                </thead>
+                <tbody>
+                  ${myPays.map(p=>{
+                    const bk = store.bookings.find(b=>b.id===p.bookingId);
+                    return `
+                    <tr class="border-t border-green-50">
+                      <td class="p-3 text-xs">${esc(p.id)}</td>
+                      <td class="p-3 text-xs">${esc(bk ? bk.planName : '—')} · ${esc(p.bookingId)}</td>
+                      <td class="p-3 text-xs">${new Date(p.created).toLocaleDateString('en-IN',{month:'long',year:'numeric'})}</td>
+                      <td class="p-3 text-xs uppercase">${esc(p.method)}</td>
+                      <td class="p-3 font-bold">${fmt(p.amount)}</td>
+                      <td class="p-3"><span class="badge badge-success">${esc(p.status)}</span></td>
+                    </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>`}
+          </div>`;
+        })()}
 
         <!-- Request Removal -->
         ${activeBookings.length > 0 ? `
@@ -1227,6 +1504,35 @@
     const liveBookings = allBookings.filter(b=>b.status==='Live');
     const pendingRequests = allRequests.filter(r=>r.status==='Pending');
     const totalMRR = allBookings.filter(b=>b.status==='Live').reduce((a,b)=>a+b.monthlyAmount,0);
+    const PIPELINE_STEPS = ['Pending survey','Survey scheduled','Resources allotted','Installation scheduled','Installed','Net-meter applied','Live','Cancelled'];
+    const allPayments = [...store.payments].sort((a,b)=>new Date(b.created)-new Date(a.created));
+    const collected6 = store.payments.filter(p=>p.status==='Paid').reduce((a,p)=>a+p.amount,0);
+    const liveMRR6 = totalMRR * 6;
+    const gridCost6 = allBookings.filter(b=>b.status==='Live').reduce((a,b)=>a+seededUsageSeries(b,6).reduce((x,y)=>x+y.gridBill,0),0);
+    const savingsRows = allBookings.filter(b=>b.status==='Live').map(b=>{
+      const s = seededUsageSeries(b,6);
+      const used6 = s.reduce((a,x)=>a+x.used,0), grid6 = s.reduce((a,x)=>a+x.gridBill,0), our6 = s.reduce((a,x)=>a+x.ourBill,0);
+      return `<tr class="border-t border-green-50">
+        <td class="p-3 font-medium">${esc(b.name)}</td>
+        <td class="p-3 text-xs">${esc(b.district)}</td>
+        <td class="p-3 text-xs">${esc(b.planName)}</td>
+        <td class="p-3 text-right">${used6}</td>
+        <td class="p-3 text-right line-through text-red-400">${fmt(grid6)}</td>
+        <td class="p-3 text-right font-bold text-emerald-600">${fmt(our6)}</td>
+        <td class="p-3 text-right font-bold text-amber-600">${fmt(grid6-our6)}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7" class="p-6 text-center text-zinc-500">No live bookings yet.</td></tr>';
+    const dMap = {};
+    allBookings.filter(b=>!['Cancelled','Removed'].includes(b.status)).forEach(b=>{
+      dMap[b.district] = dMap[b.district] || { mrr:0, n:0 };
+      dMap[b.district].mrr += b.monthlyAmount; dMap[b.district].n++;
+    });
+    const topDistricts = Object.entries(dMap).sort((a,b)=>b[1].mrr-a[1].mrr).slice(0,6);
+    const maxDistrictMRR = topDistricts.length ? topDistricts[0][1].mrr : 1;
+    const pendingPays = allPayments.filter(p=>p.status!=='Paid');
+    const pendingAmt = pendingPays.reduce((a,p)=>a+p.amount,0);
+    const pendingCount = pendingPays.length;
+    const savingsTotal = gridCost6 - allBookings.filter(b=>b.status==='Live').reduce((a,b)=>a+seededUsageSeries(b,6).reduce((x,y)=>x+y.ourBill,0),0);
 
     $view.innerHTML = `
     <div class="page-enter">
@@ -1234,16 +1540,17 @@
         <div class="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 class="text-3xl font-black">Admin <span class="gradient-text">Dashboard</span></h1>
-            <p class="text-sm text-zinc-500 mt-1">Welcome, <b>${esc(user.name)}</b> • ${allUsers.length} users • ${allBookings.length} bookings</p>
+            <p class="text-sm text-zinc-500 mt-1">Welcome, <b>${esc(user.name)}</b> • ${allUsers.length} users • ${allBookings.length} bookings • ${fmt(totalMRR)}/mo MRR • ${fmt(totalMRR*12)} ARR</p>
           </div>
           <div class="flex gap-2">
+            <button id="reseedBtn" class="btn-secondary rounded-full">Re-seed demo data</button>
             <button id="exportBtn" class="btn-secondary rounded-full">Export JSON</button>
             <button id="logoutBtn" class="btn-ghost">Logout</button>
           </div>
         </div>
 
         <!-- Stats -->
-        <div class="grid md:grid-cols-5 gap-4 mt-6">
+        <div class="grid md:grid-cols-4 lg:grid-cols-7 gap-4 mt-6">
           <div class="nova-card nova-card-stat p-5">
             <div class="text-xs tracking-widest text-zinc-500 uppercase">Total Users</div>
             <div class="font-black text-2xl mt-1">${allUsers.length}</div>
@@ -1263,6 +1570,17 @@
           <div class="nova-card nova-card-stat p-5">
             <div class="text-xs tracking-widest text-zinc-500 uppercase">Monthly Revenue</div>
             <div class="font-black text-2xl mt-1">${fmt(totalMRR)}</div>
+            <div class="text-xs text-zinc-500">${fmt(totalMRR*12)} ARR</div>
+          </div>
+          <div class="nova-card nova-card-stat p-5">
+            <div class="text-xs tracking-widest text-zinc-500 uppercase">ARPU</div>
+            <div class="font-black text-2xl mt-1">${fmt(liveBookings.length ? Math.round(totalMRR/liveBookings.length) : 0)}</div>
+            <div class="text-xs text-zinc-500">per live plan</div>
+          </div>
+          <div class="nova-card nova-card-stat p-5">
+            <div class="text-xs tracking-widest text-zinc-500 uppercase">Collected</div>
+            <div class="font-black text-2xl mt-1 text-emerald-600">${fmt(collected6)}</div>
+            <div class="text-xs text-zinc-500">${store.payments.length} payments</div>
           </div>
         </div>
 
@@ -1272,6 +1590,8 @@
           <button class="btn-secondary rounded-full admin-tab relative" data-tab="notifications">Notifications ${unread > 0 ? `<span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center">${unread}</span>` : ''}</button>
           <button class="btn-secondary rounded-full admin-tab" data-tab="requests">Removal Requests</button>
           <button class="btn-secondary rounded-full admin-tab" data-tab="users">Users</button>
+          <button class="btn-secondary rounded-full admin-tab" data-tab="payments">Payments</button>
+          <button class="btn-secondary rounded-full admin-tab" data-tab="analytics">Analytics</button>
           <button class="btn-secondary rounded-full admin-tab" data-tab="districts">District Rates</button>
         </div>
 
@@ -1370,7 +1690,7 @@
             <div class="overflow-x-auto max-h-[520px] overflow-y-auto">
               <table class="w-full text-sm">
                 <thead class="sticky top-0 bg-[#f0fdf4]">
-                  <tr><th class="text-left p-3">ID</th><th class="text-left p-3">Name</th><th class="text-left p-3">Email</th><th class="text-left p-3">Phone</th><th class="text-left p-3">District</th><th class="text-left p-3">Joined</th><th class="text-left p-3">Bookings</th></tr>
+                  <tr><th class="text-left p-3">ID</th><th class="text-left p-3">Name</th><th class="text-left p-3">Email</th><th class="text-left p-3">Phone</th><th class="text-left p-3">District</th><th class="text-left p-3">Joined</th><th class="text-left p-3">Bookings</th><th class="p-3 text-center">Profile</th></tr>
                 </thead>
                 <tbody>
                   ${allUsers.map(u=>`
@@ -1382,6 +1702,7 @@
                       <td class="p-3 text-xs">${esc(u.district||'\u2014')}</td>
                       <td class="p-3 text-xs">${esc(u.created||'\u2014')}</td>
                       <td class="p-3 text-xs font-bold">${allBookings.filter(b=>b.userId===u.id).length}</td>
+                      <td class="p-3 text-center"><button class="btn-secondary text-[10px] px-2 py-1 rounded-lg admin-view-user" data-user="${u.id}">View</button></td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -1413,6 +1734,81 @@
                   `).join('')}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payments Tab -->
+        <div id="tab-payments" class="admin-panel mt-4 hidden">
+          <div class="nova-card p-0 overflow-hidden">
+            <div class="p-4 flex items-center justify-between flex-wrap gap-2">
+              <h3 class="font-bold">Payment Ledger</h3>
+              <div class="flex gap-2 items-center">
+                <input id="paySearch" class="input-field !w-52 !py-1.5 text-sm" placeholder="Search ID / user / booking" />
+                <select id="payStatusFilter" class="input-field !py-1.5 text-sm">
+                  <option value="">All statuses</option>
+                  <option>Paid</option>
+                  <option>Pending</option>
+                </select>
+              </div>
+            </div>
+            <div class="px-4 py-2 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100"><div class="text-[10px] uppercase text-emerald-600">Collected (paid)</div><div class="font-black text-lg">${fmt(collected6)}</div></div>
+              <div class="p-3 rounded-xl bg-amber-50 border border-amber-100"><div class="text-[10px] uppercase text-amber-600">Pending</div><div class="font-black text-lg">${fmt(pendingAmt)}</div><div class="text-[10px] text-zinc-400">${pendingCount} payments</div></div>
+              <div class="p-3 rounded-xl bg-blue-50 border border-blue-100"><div class="text-[10px] uppercase text-blue-600">Expected (6 mo run-rate)</div><div class="font-black text-lg">${fmt(liveMRR6)}</div></div>
+              <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-100"><div class="text-[10px] uppercase text-zinc-500">Total payments</div><div class="font-black text-lg">${allPayments.length}</div></div>
+            </div>
+            <div class="overflow-x-auto max-h-[520px] overflow-y-auto">
+              <table class="w-full text-sm">
+                <thead class="sticky top-0 bg-[#f0fdf4]">
+                  <tr><th class="text-left p-3">Payment</th><th class="text-left p-3">Customer</th><th class="text-left p-3">Booking</th><th class="text-left p-3">Date</th><th class="text-left p-3">Method</th><th class="text-left p-3">Amount</th><th class="text-left p-3">Status</th><th class="p-3 text-center">Action</th></tr>
+                </thead>
+                <tbody id="payBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="tab-analytics" class="admin-panel mt-4 hidden">
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="nova-card p-6">
+              <h3 class="font-bold">Pipeline Funnel</h3>
+              <p class="text-xs text-zinc-500 mt-1">Bookings at each stage of the install journey</p>
+              <div class="mt-4 space-y-2">
+                ${PIPELINE_STEPS.map(st=>{
+                  const n = allBookings.filter(b=>b.status===st).length;
+                  const pct = allBookings.length ? Math.round(n/allBookings.length*100) : 0;
+                  return `
+                  <div>
+                    <div class="flex justify-between text-xs mb-1"><span class="${n?'text-zinc-700':'text-zinc-400'}">${st}</span><span class="font-bold ${n?'':'text-zinc-300'}">${n}</span></div>
+                    <div class="h-2.5 rounded-full bg-zinc-100 overflow-hidden"><div class="h-full rounded-full ${n?'bg-gradient-to-r from-green-500 to-emerald-400':'bg-zinc-100'}" style="width:${pct}%"></div></div>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>
+            <div class="nova-card p-6">
+              <h3 class="font-bold">Revenue by District</h3>
+              <p class="text-xs text-zinc-500 mt-1">Top districts by monthly recurring revenue</p>
+              <div class="mt-4 space-y-2">
+                ${topDistricts.map(([dn,v])=>`
+                <div>
+                  <div class="flex justify-between text-xs mb-1"><span class="text-zinc-700">${esc(dn)} <span class="text-zinc-400">· ${v.n} plans</span></span><span class="font-bold">${fmt(v.mrr)}</span></div>
+                  <div class="h-2.5 rounded-full bg-zinc-100 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-blue-400" style="width:${Math.round(v.mrr/maxDistrictMRR*100)}%"></div></div>
+                </div>`).join('') || '<p class="text-sm text-zinc-500">No data yet.</p>'}
+              </div>
+            </div>
+            <div class="nova-card p-6 md:col-span-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <h3 class="font-bold">Customer Savings — Grid vs SolarSaathi (last 6 months)</h3>
+                <span class="badge badge-success">Customers saved ${fmt(savingsTotal)} in 6 months</span>
+              </div>
+              <div class="overflow-x-auto mt-3">
+                <table class="compare-table">
+                  <thead><tr><th>Customer</th><th>District</th><th>Plan</th><th>Units (6 mo)</th><th>Grid cost</th><th>SolarSaathi</th><th>Saved</th></tr></thead>
+                  <tbody>${savingsRows}</tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -1600,6 +1996,107 @@
       const a=document.createElement('a'); a.href=url; a.download='solarSaathi-admin-export.json'; a.click();
       URL.revokeObjectURL(url);
     });
+    // ——— Payments ledger ———
+    function drawPayments(){
+      const q = (document.getElementById('paySearch')?.value||'').toLowerCase();
+      const st = document.getElementById('payStatusFilter')?.value || '';
+      let list = allPayments;
+      if(st) list = list.filter(p=>p.status===st);
+      if(q) list = list.filter(p=>{
+        const bk = store.bookings.find(b=>b.id===p.bookingId);
+        return (p.id+' '+(bk?bk.name:'')+' '+p.bookingId+' '+p.method).toLowerCase().includes(q);
+      });
+      const body = document.getElementById('payBody');
+      if(!body) return;
+      body.innerHTML = list.slice(0,150).map(p=>{
+        const bk = store.bookings.find(b=>b.id===p.bookingId);
+        return `
+        <tr class="border-t border-green-50">
+          <td class="p-3 text-xs">${esc(p.id)}</td>
+          <td class="p-3"><div class="font-medium text-xs">${esc(bk?bk.name:'—')}</div><div class="text-[10px] text-zinc-500">${esc(bk?bk.district:'')}</div></td>
+          <td class="p-3 text-xs">${esc(p.bookingId)}</td>
+          <td class="p-3 text-xs">${new Date(p.created).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</td>
+          <td class="p-3 text-xs uppercase">${esc(p.method)}</td>
+          <td class="p-3 font-bold">${fmt(p.amount)}</td>
+          <td class="p-3"><span class="badge ${p.status==='Paid'?'badge-success':'badge-warning'}">${esc(p.status)}</span></td>
+          <td class="p-3 text-center">
+            ${p.status==='Pending' ? `<button class="btn-primary text-[10px] px-2 py-1 rounded-lg pay-mark" data-id="${p.id}">Mark Paid</button>` : '<span class="text-[10px] text-emerald-600">\u2713</span>'}
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="8" class="p-8 text-center text-zinc-500">No payments found</td></tr>';
+      body.querySelectorAll('.pay-mark').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const p = store.payments.find(x=>x.id===btn.getAttribute('data-id'));
+          if(p){ p.status='Paid'; saveStore(); toast(p.id+' marked paid','success'); renderAdmin(); }
+        });
+      });
+    }
+    document.getElementById('paySearch')?.addEventListener('input', drawPayments);
+    document.getElementById('payStatusFilter')?.addEventListener('change', drawPayments);
+    drawPayments();
+
+    // ——— User drill-down modal ———
+    $view.querySelectorAll('.admin-view-user').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const uid = btn.getAttribute('data-user');
+        const u = getUsers().find(x=>x.id===uid);
+        if(!u) return;
+        const uBks = store.bookings.filter(b=>b.userId===uid);
+        const uPays = store.payments.filter(p=>p.userId===uid);
+        const uReq = store.requests.filter(r=>r.userId===uid);
+        const uMRR = uBks.filter(b=>b.status==='Live').reduce((a,b)=>a+b.monthlyAmount,0);
+        const uSeries = uBks.filter(b=>b.status==='Live').map(b=>seededUsageSeries(b,6));
+        const g6 = uSeries.reduce((a,s)=>a+s.reduce((x,y)=>x+y.gridBill,0),0);
+        const o6 = uSeries.reduce((a,s)=>a+s.reduce((x,y)=>x+y.ourBill,0),0);
+        openModal(`
+          <div class="flex items-center gap-3 mb-4">
+            <span class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-600 to-emerald-500 text-white grid place-items-center text-xl font-black">${esc((u.name||'?').slice(0,1).toUpperCase())}</span>
+            <div>
+              <h3 class="font-black text-lg">${esc(u.name)}</h3>
+              <p class="text-xs text-zinc-500">${esc(u.email)} • ${esc(u.phone||'—')} • ${esc(u.district||'—')}</p>
+              <p class="text-[10px] text-zinc-400">Joined ${esc(u.created||'—')} • ${esc(u.id)}</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div class="p-3 rounded-xl bg-zinc-50 text-center"><div class="text-[10px] uppercase text-zinc-500">Bookings</div><div class="font-black text-lg">${uBks.length}</div></div>
+            <div class="p-3 rounded-xl bg-emerald-50 text-center"><div class="text-[10px] uppercase text-emerald-600">Live MRR</div><div class="font-black text-lg">${fmt(uMRR)}</div></div>
+            <div class="p-3 rounded-xl bg-blue-50 text-center"><div class="text-[10px] uppercase text-blue-600">Payments</div><div class="font-black text-lg">${uPays.length}</div></div>
+            <div class="p-3 rounded-xl bg-amber-50 text-center"><div class="text-[10px] uppercase text-amber-600">Saved 6 mo</div><div class="font-black text-lg">${fmt(g6-o6)}</div></div>
+          </div>
+          <h4 class="font-bold text-sm mb-2">Bookings</h4>
+          ${uBks.length===0 ? '<p class="text-xs text-zinc-500 mb-3">No bookings.</p>' : `
+          <div class="overflow-x-auto max-h-40 mb-4 rounded-xl border border-zinc-100">
+            <table class="w-full text-xs">
+              <thead class="sticky top-0 bg-[#f0fdf4]"><tr><th class="text-left p-2">ID</th><th class="text-left p-2">Plan</th><th class="text-left p-2">Units</th><th class="text-left p-2">₹/mo</th><th class="text-left p-2">Status</th></tr></thead>
+              <tbody>${uBks.map(b=>`<tr class="border-t border-green-50"><td class="p-2">${esc(b.id)}</td><td class="p-2">${esc(b.planName)}</td><td class="p-2">${b.units}</td><td class="p-2 font-bold">${fmt(b.monthlyAmount)}</td><td class="p-2"><span class="badge ${statusColor(b.status)}">${esc(b.status)}</span></td></tr>`).join('')}</tbody>
+            </table>
+          </div>`}
+          <h4 class="font-bold text-sm mb-2">Payment history (${uPays.length})</h4>
+          ${uPays.length===0 ? '<p class="text-xs text-zinc-500">No payments.</p>' : `
+          <div class="overflow-x-auto max-h-40 rounded-xl border border-zinc-100">
+            <table class="w-full text-xs">
+              <thead class="sticky top-0 bg-[#f0fdf4]"><tr><th class="text-left p-2">ID</th><th class="text-left p-2">Date</th><th class="text-left p-2">Method</th><th class="text-left p-2">Amount</th><th class="text-left p-2">Status</th></tr></thead>
+              <tbody>${[...uPays].sort((a,b)=>new Date(b.created)-new Date(a.created)).map(p=>`<tr class="border-t border-green-50"><td class="p-2">${esc(p.id)}</td><td class="p-2">${new Date(p.created).toLocaleDateString('en-IN')}</td><td class="p-2 uppercase">${esc(p.method)}</td><td class="p-2 font-bold">${fmt(p.amount)}</td><td class="p-2">${esc(p.status)}</td></tr>`).join('')}</tbody>
+            </table>
+          </div>`}
+          ${uReq.length ? `<div class="mt-3 text-xs text-zinc-500">${uReq.length} request(s) filed.</div>` : ''}
+          <button class="btn-primary btn-ripple w-full rounded-full mt-4" onclick="closeModal()">Close</button>
+        `);
+      });
+    });
+
+    // ——— Re-seed demo data ———
+    document.getElementById('reseedBtn')?.addEventListener('click', ()=>{
+      if(confirm('Wipe ALL current bookings/payments/requests/notifications and regenerate demo data?')){
+        store.bookings = []; store.requests = []; store.notifications = []; store.payments = [];
+        saveStore();
+        localStorage.removeItem(SEED_FLAG);
+        seedDemoData(true);
+        toast('Demo data re-seeded!','success');
+        renderAdmin();
+      }
+    });
+
     document.getElementById('logoutBtn')?.addEventListener('click', logout);
     attachReveal();
   }
