@@ -424,20 +424,20 @@
     // give the demo login user (Raju Bhai) a live plan so their dashboard is fully populated
     if(users.find(u=>u.id==='USR-user1') && !store.bookings.find(b=>b.userId==='USR-user1')){
       const d = DISTRICTS.find(x=>x.name==='Pune') || DISTRICTS[0];
-      const plan = PLANS.find(p=>p.id==='residential');
-      const units = 300;
+      const plan = PLANS.find(p=>p.id==='micro');
+      const units = 45; // small stall: lights + fan + phone charging
       const rate = Math.round(d.gridRate * SOLAR_DISCOUNT * 100) / 100;
       const created = new Date(Date.now() - 150 * 86400000);
-      const installed = new Date(created.getTime() + 18 * 86400000).toISOString();
-      const eq = EQUIPMENT.residential;
+      const installed = new Date(created.getTime() + 5 * 86400000).toISOString();
+      const eq = EQUIPMENT.micro;
       store.bookings.push({
-        id: mkId('BK'), userId: 'USR-user1', planId: 'residential', planName: plan.name,
+        id: mkId('BK'), userId: 'USR-user1', planId: 'micro', planName: plan.name,
         district: 'Pune', units, rate, monthlyAmount: Math.round(units * rate),
-        name: 'Raju Bhai', phone: '9876543210', address: 'H.No 12, Anna Chowk, Pune', pincode: '411001',
+        name: 'Raju Bhai', phone: '9876543210', address: 'Stall 7, Laxmi Road Pani Puri Row, Pune', pincode: '411002',
         date: new Date(created.getTime() + 86400000).toISOString().slice(0,10),
-        roofType: 'Flat RCC', note: '', status: 'Live',
+        roofType: 'Cart-mounted canopy mount', note: '', status: 'Live',
         resources: { panels: eq.panels, inverter: eq.inverter, mounting: eq.mounting, wiring: eq.wiring, misc: eq.misc,
-          techName: 'Rajesh Kumar', techPhone: '9820034567', installDate: installed.slice(0,10), allotDate: created.toISOString() },
+          techName: 'Lakshman K', techPhone: '9848012345', installDate: installed.slice(0,10), allotDate: created.toISOString() },
         installedDate: installed, created: created.toISOString()
       });
     }
