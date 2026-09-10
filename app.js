@@ -687,7 +687,7 @@
       if(!user){ toast('Invalid email or password','error'); return; }
       saveSession({ id:user.id, name:user.name, email:user.email, phone:user.phone, role:user.role, district:user.district });
       toast('Welcome, '+user.name+'! ☀️','success');
-      location.hash = user.role==='admin' ? '#/admin' : '#/dashboard';
+      location.hash = user.role==='admin' ? '#/admin' : '#/vendorapp';
       location.reload();
     });
     attachReveal();
@@ -1015,7 +1015,7 @@
       addNotification('new_booking', 'New Booking!', `${booking.name} (${booking.phone}) booked ${booking.planName} for ${booking.district} — ${booking.units} units/mo. ₹${booking.monthlyAmount}/mo`, booking.id);
       closeModal();
       toast('Booked! '+booking.planName+' — '+booking.id,'success');
-      location.hash = '#/dashboard';
+      location.hash = '#/vendorapp';
     });
   }
 
@@ -2464,8 +2464,8 @@
     const authNav = document.getElementById('authNav');
     if(authNav){
       if(user){
-        const dashLink = user.role==='admin' ? '#/admin' : '#/dashboard';
-        const dashLabel = user.role==='admin' ? 'Admin' : 'Dashboard';
+        const dashLink = user.role==='admin' ? '#/admin' : '#/vendorapp';
+        const dashLabel = user.role==='admin' ? 'Ops Dashboard' : 'My S.E.V.A.';
         authNav.innerHTML = `
           <a href="${dashLink}" class="btn-ghost text-sm">${dashLabel}</a>
           <a href="#" class="btn-ghost text-sm" id="navLogout">Logout</a>
@@ -2484,8 +2484,8 @@
       // Remove old auth links if any
       prismaNav.querySelectorAll('.prisma-login-btn, .prisma-reg-btn, .prisma-dash-btn, .prisma-logout-btn').forEach(el=>el.remove());
       if(user){
-        const dashLink = user.role==='admin' ? '#/admin' : '#/dashboard';
-        const dashLabel = user.role==='admin' ? 'Admin' : 'Dashboard';
+        const dashLink = user.role==='admin' ? '#/admin' : '#/vendorapp';
+        const dashLabel = user.role==='admin' ? 'Ops Dashboard' : 'My S.E.V.A.';
         const dashA = document.createElement('a');
         dashA.href = dashLink; dashA.textContent = dashLabel; dashA.className = 'prisma-dash-btn';
         const logoutA = document.createElement('a');
@@ -2507,4 +2507,32 @@
   window.addEventListener('hashchange', router);
   if(document.readyState !== 'loading') router(); else document.addEventListener('DOMContentLoaded', router);
   window.closeModal = closeModal;
+
+  // ——— Bridge for vendor.js (Vendor App) & ops.js (Operations Dashboard) ———
+  // They render into #view and reuse the auth, store and helpers defined above.
+  window.SS = {
+    view: () => $view,
+    modalRoot: () => $modalRoot,
+    toastRoot: () => $toastRoot,
+    DISTRICTS, PLANS, SOLAR_DISCOUNT, EQUIPMENT,
+    fmt, esc, timeAgo, toast, openModal, closeModal, attachReveal, animateCountUp,
+    isLoggedIn, isAdmin, currentUser, logout, getUsers, saveUsers,
+    get store(){ return store; },
+    saveStore, addNotification, seededUsageSeries, mulberry32, statusColor: s => {
+      s=(s||'').toLowerCase();
+      if(s.includes('live')||s.includes('installed')||s.includes('active')||s.includes('paid')||s.includes('resolved')) return 'badge-success';
+      if(s.includes('pending')||s.includes('scheduled')||s.includes('en route')||s.includes('assigned')||s.includes('due')||s.includes('low')) return 'badge-warning';
+      if(s.includes('cancel')||s.includes('removed')||s.includes('reject')||s.includes('fault')||s.includes('paused')||s.includes('missed')||s.includes('failed')||s.includes('locked')) return 'badge-error';
+      return 'badge-default';
+    }
+  };
+  // role guards used by the two panels
+  window.SS.requireVendor = () => { if(!isLoggedIn()){ location.hash='#/login'; return false; } return true; };
+  window.SS.requireAdmin  = () => { if(!isAdmin()){ location.hash='#/login'; return false; } return true; };
+  window.SSAuth = { login: (email, pass) => {
+    const users = getUsers();
+    const user = users.find(u=> u.email.toLowerCase()===String(email).trim().toLowerCase() && u.password===pass);
+    if(user) saveSession({ id:user.id, name:user.name, email:user.email, phone:user.phone, role:user.role, district:user.district });
+    return user || null;
+  }};
 })();
