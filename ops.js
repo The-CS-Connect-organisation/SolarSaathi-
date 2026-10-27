@@ -1,5 +1,5 @@
 /* SolarSaathi — Panel 2: Operations Dashboard (internal foundation)
-   Sunalyzer-style dark sidebar + cards. Rendered at #/admin for role 'admin'.
+   Sunalyzer-style dark sidebar + cards. Rendered at #/ops for role 'admin'.
    Fleet • Vendors • Billing & Revenue • Lock/Unlock engine • Dispatch • Agents • Analytics • Alerts */
 (() => {
   const SS = window.SS;
@@ -107,6 +107,30 @@
     if(u){ mut(u); saveOps(OPS); }
   }
 
+  const API = window.SSAPI;
+  // SSServerMode() is live (see api-client.js): false in static mode or
+  // after the backend becomes unreachable.
+  async function safeCall(fn, fallback='Something went wrong'){
+    try{ return await fn(); }
+    catch(err){
+      if(err && err.offline){
+        if(!window.__SS_ENTERED_LOCAL__){
+          window.__SS_ENTERED_LOCAL__ = true;
+          toast('Backend unavailable — continuing with local demo data','error');
+        }
+        try{ window.SSRoute && window.SSRoute(); }catch(_){ /* ignore */ }
+        return null;
+      }
+      toast(err.message || fallback, 'error'); return null;
+    }
+  }
+  async function pullOps(){
+    if(!SSServerMode()) return null;
+    const data = await safeCall(()=>API.get('/ops'));
+    if(data){ OPS = data; saveOps(OPS); }
+    return data;
+  }
+
   // fleet stats
   function fleetStats(){
     const u = OPS.units;
@@ -201,7 +225,7 @@
         </div>
         <nav class="ops-nav">
           ${NAV.map(n=>`
-            <a href="#/admin/${n.id}" class="${active===n.id?'active':''}">
+            <a href="#/ops/${n.id}" class="${active===n.id?'active':''}">
               <span class="ico">${n.icon}</span>${n.label}
               ${n.id==='dispatch' && OPS.issues.filter(i=>i.status!=='Resolved').length ? `<span class="cnt">${OPS.issues.filter(i=>i.status!=='Resolved').length}</span>`:''}
               ${n.id==='alerts' && alertCount() ? `<span class="cnt">${alertCount()}</span>`:''}
@@ -209,7 +233,7 @@
         </nav>
         <div class="ops-foot">
           <div><b style="color:#fff;">${fs.total}</b> units • <b style="color:#4ade80;">${fs.active}</b> active</div>
-          <div style="margin-top:6px;"><a href="#/" style="color:#7dd3fc;text-decoration:none;font-weight:700;">← Back to site</a></div>
+          <div style="margin-top:6px;"><a href="#/admin" style="color:#7dd3fc;text-decoration:none;font-weight:700;">Admin panel</a> • <a href="#/" style="color:#7dd3fc;text-decoration:none;font-weight:700;">← Back to site</a></div>
         </div>
       </aside>
 
@@ -348,8 +372,15 @@
       <input class="onb-inp" id="pauseReason" placeholder="Reason (e.g. verified non-payment)" style="margin:10px 0;" />
       <button class="ops-btn ops-btn-r" style="width:100%;" id="pauseGo">Confirm pause</button>
       <button class="ops-btn ops-btn-g" style="width:100%;margin-top:8px;" onclick="closeModal()">Cancel</button>`);
-    document.getElementById('pauseGo').addEventListener('click',()=>{
+    document.getElementById('pauseGo').addEventListener('click', async ()=>{
       const reason = document.getElementById('pauseReason').value.trim() || 'Manual pause by ops';
+      if(SSServerMode()){
+        const res = await safeCall(()=>API.patch('/ops/units/'+encodeURIComponent(unitId)+'/state', { state:'paused', reason }));
+        if(!res) return;
+        await pullOps();
+        closeModal(); toast('Unit '+unitId+' paused','success'); render();
+        return;
+      }
       saveUnit(unitId, u=>{
         u.state='paused';
         u.lockEvents.unshift({ id:'LK-'+Math.floor(1000+Math.random()*8999), at:Date.now(), action:'locked', reason, actor:'ops console (manual)' });
@@ -358,7 +389,14 @@
       closeModal(); toast('Unit '+unitId+' paused','success'); render();
     });
   };
-  window.OPSResume = (unitId) => {
+  window.OPSResume = async (unitId) => {
+    if(SSServerMode()){
+      const res = await safeCall(()=>API.patch('/ops/units/'+encodeURIComponent(unitId)+'/state', { state:'active' }));
+      if(!res) return;
+      await pullOps();
+      closeModal(); toast('Power restored for '+unitId,'success'); render();
+      return;
+    }
     saveUnit(unitId, u=>{
       u.state='active'; u.missedDays=0;
       u.lockEvents.unshift({ id:'LK-'+Math.floor(1000+Math.random()*8999), at:Date.now(), action:'unlocked', reason:'Payment cleared / manual resume', actor:'ops console (manual)' });
@@ -540,31 +578,58 @@
     </div>`;
   }
 
-  window.OPSAssign = (issueId, agentId) => {
+  window.OPSAssign = async (issueId, agentId) => {
     if(!agentId) return;
     const agent = OPS.agents.find(a=>a.id===agentId);
     const issue = OPS.issues.find(i=>i.id===issueId);
-    if(issue && agent){
+    if(!issue || !agent) return;
+    if(SSServerMode()){
+      const res = await safeCall(()=>API.patch('/ops/issues/'+encodeURIComponent(issueId), { agentId, status:'Agent assigned' }));
+      if(!res) return;
+      await pullOps();
+    } else {
       issue.agentId = agentId; issue.status = 'Agent assigned';
       saveOps(OPS);
-      toast(issue.id+' → '+agent.name,'success');
-      render();
     }
+    toast(issue.id+' → '+agent.name,'success');
+    render();
   };
-  window.OPSAdvance = (issueId) => {
+  window.OPSAdvance = async (issueId) => {
     const issue = OPS.issues.find(i=>i.id===issueId); if(!issue) return;
     const flow = ['Submitted','Agent assigned','En route','Resolved'];
-    issue.status = flow[Math.min(flow.indexOf(issue.status)+1, 2)];
-    saveOps(OPS); render();
+    const status = flow[Math.min(flow.indexOf(issue.status)+1, 2)];
+    if(SSServerMode()){
+      const res = await safeCall(()=>API.patch('/ops/issues/'+encodeURIComponent(issueId), { status }));
+      if(!res) return;
+      await pullOps();
+    } else {
+      issue.status = status;
+      saveOps(OPS);
+    }
+    render();
   };
-  window.OPSResolve = (issueId) => {
+  window.OPSResolve = async (issueId) => {
     const issue = OPS.issues.find(i=>i.id===issueId); if(!issue) return;
-    issue.status = 'Resolved';
-    saveOps(OPS);
+    if(SSServerMode()){
+      const res = await safeCall(()=>API.patch('/ops/issues/'+encodeURIComponent(issueId), { status:'Resolved' }));
+      if(!res) return;
+      await pullOps();
+    } else {
+      issue.status = 'Resolved';
+      saveOps(OPS);
+    }
     toast(issue.id+' resolved ✔','success');
     render();
   };
-  window.OPSScheduleBattery = (unitId) => {
+  window.OPSScheduleBattery = async (unitId) => {
+    if(SSServerMode()){
+      const res = await safeCall(()=>API.post('/ops/units/'+encodeURIComponent(unitId)+'/battery', {}));
+      if(!res) return;
+      await pullOps();
+      toast('Battery replacement scheduled for '+unitId,'success');
+      render();
+      return;
+    }
     const agent = OPS.agents[0];
     OPS.issues.push({
       id:'ISS-'+Math.floor(3000+Math.random()*999), unitId, vendorName: OPS.units.find(u=>u.unitId===unitId)?.vendorName||'—',
@@ -691,10 +756,15 @@
     </div>`;
   }
 
-  window.OPSFilterFaults = () => { location.hash = '#/admin/fleet'; setTimeout(()=>{ OPS.units.filter(u=>u.state==='faulted').forEach(u=>OPSUnit(u.unitId)); }, 400); };
-  window.OPSFilterPaused = () => { location.hash = '#/admin/fleet'; };
+  window.OPSFilterFaults = () => { location.hash = '#/ops/fleet'; setTimeout(()=>{ OPS.units.filter(u=>u.state==='faulted').forEach(u=>OPSUnit(u.unitId)); }, 400); };
+  window.OPSFilterPaused = () => { location.hash = '#/ops/fleet'; };
 
-  window.OPSExport = () => {
+  window.OPSExport = async () => {
+    if(SSServerMode()){
+      try{ await API.download('/ops/export', 'solarsaathi-ops-export.json'); }
+      catch(err){ toast(err.message || 'Export failed','error'); }
+      return;
+    }
     const blob = new Blob([JSON.stringify(OPS, null, 2)], { type:'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -702,13 +772,20 @@
     a.click();
     toast('Ops data exported','success');
   };
-  window.OPSReseed = () => {
-    if(confirm('Wipe and regenerate all ops demo data (fleet, agents, issues, lock log)?')){
-      localStorage.removeItem(OKEY);
-      refresh();
+  window.OPSReseed = async () => {
+    if(!confirm('Wipe and regenerate all ops demo data (fleet, agents, issues, lock log)?')) return;
+    if(SSServerMode()){
+      const res = await safeCall(()=>API.post('/ops/reseed', {}));
+      if(!res) return;
+      OPS = res; saveOps(OPS);
       toast('Ops data re-seeded','success');
       render();
+      return;
     }
+    localStorage.removeItem(OKEY);
+    refresh();
+    toast('Ops data re-seeded','success');
+    render();
   };
 
   // ===================== ROUTER =====================

@@ -1,59 +1,98 @@
-# SolarSaathi — Solar on Rent at 65% of Grid Rate ☀️
+# SolarSaathi Frontend
 
-India's solar rental platform SPA (vanilla HTML/CSS/JS, Tailwind CDN, localStorage persistence).
-Rent rooftop solar at 65% of your grid rate — 3 plans: Micro, Residential, Industrial. Zero upfront cost, free installation, 24×7 monitoring, maintenance included.
+India's solar rental platform SPA. Rent rooftop solar at 65% of the grid rate - three plans (Micro, Residential, Industrial), zero upfront cost, free installation, monitoring and maintenance included.
 
-## Run it
+This repository contains only the frontend. The API and database live in the sibling backend repository.
 
-Open `index.html` in a browser (or serve the folder with any static server, e.g. `npx serve .`).
-Everything runs client-side — no build step, no backend.
+Expected local checkout layout:
+
+```text
+SolarSaathi/
+  SolarSaathi-/          frontend repository (this repo)
+  SolarSaathi-backend/   backend API + database repository
+```
+
+## Requirements
+
+- A modern browser
+- Node.js **22.5+** only if you want to run the backend (tested on Node 24.14.0)
+- No frontend build step and no frontend package installation
+
+## Run the full app
+
+The backend serves this frontend automatically when the two sibling folders are checked out together:
+
+```powershell
+cd ..\SolarSaathi-backend
+npm start
+```
+
+Open http://localhost:3000. The backend injects the server snapshot into `index.html`, hydrates the frontend, and serves both the SPA and `/api` from the same origin.
+
+If the frontend checkout has a different name, point the backend at it:
+
+```powershell
+$env:FRONTEND_DIR='C:\Users\ganes\SolarSaathi\SolarSaathi-frontend'
+npm start
+```
+
+You can still open `index.html` directly or serve this folder with any static server. Without the backend, the app uses the original localStorage-only mode.
+
+## Presentation mode
+
+The bottom-right pill always shows the current mode: **Backend connected** or **Local demo mode**.
+
+- Start the backend before presenting; stop it when done.
+- If the backend stops mid-demo, the next server call fails over automatically: the pill flips to **Local demo mode** and the app continues on the last synced local data.
+- Log in while the backend is running — the offline fallback reuses the synced session and data.
 
 ## Demo accounts
 
-| Role  | Email                  | Password |
-|-------|------------------------|----------|
-| Admin | `admin@admin.com`      | `123`    |
-| User  | `user123@123mail.com`  | `123`    |
+| Role  | Email                 | Password |
+|-------|-----------------------|----------|
+| Admin | `admin@admin.com`     | `123`    |
+| User  | `user123@123mail.com` | `123`    |
 
-Plus **10 seeded demo customers** (e.g. `sunita.devi@demo.in`, `mohammed.irfan@demo.in`, password `123`).
-The user demo account (Raju Bhai) gets a **live Residential plan in Pune with 5 months of payment history**, so the dashboard is fully populated on first login.
+Plus 10 seeded demo customers, all with password `123`. New accounts can also be created from `#/register`.
 
-## Seeded demo data
+## Routes
 
-On first load (flag `solarSaathi.seeded.v3` in localStorage), the app generates deterministic demo data:
+| Route        | Screen                                                      |
+|--------------|-------------------------------------------------------------|
+| `#/`         | Marketing home                                              |
+| `#/plans`    | Plans and booking flow                                      |
+| `#/how`      | How it works                                                |
+| `#/about`    | About                                                       |
+| `#/contact`  | Contact form                                                |
+| `#/faq`      | FAQ                                                         |
+| `#/login`    | Login                                                       |
+| `#/register` | Registration                                               |
+| `#/dashboard`| Customer dashboard                                         |
+| `#/vendorapp`| Vendor app                                                 |
+| `#/ops`      | Ops Console for admins                                      |
+| `#/admin`    | Classic admin panel for admins                              |
+| `#/sunalyzer`| Solar analysis page                                         |
 
-- **11 bookings** across every pipeline stage (6 Live, plus survey / allotment / installed stages), spread over 10 districts and all 3 plans
-- **~25 payment records** over the last 5 months per live plan (with a realistically skipped month here and there)
-- **2 removal/support requests** (1 pending, 1 approved)
-- **3 admin notifications**
-- Numbers are seeded with a fixed PRNG seed, so they're stable across reloads. Use **Admin → Re-seed demo data** to wipe and regenerate.
+## Frontend files
 
-## User dashboard (`#/dashboard`)
+| File          | Purpose                                                     |
+|---------------|-------------------------------------------------------------|
+| `index.html`  | SPA shell, pages and navigation                             |
+| `styles.css`  | Shared styles                                               |
+| `app.js`      | Customer, marketing and admin UI logic                      |
+| `vendor.js`   | Vendor app UI                                               |
+| `ops.js`      | Ops Console UI                                              |
+| `admin.js`    | Legacy admin stub                                           |
+| `api-client.js` | Server snapshot hydration and `/api` fetch wrapper       |
+| `Sunalyzer/`  | Separate Flask-style prototype assets, not required by Node |
 
-- Stats: active plans, district grid rate vs **your 65% rate**, monthly + yearly savings
-- **Grid vs Solar chart (last 6 months)** — monthly bars comparing what the grid would have cost vs the SolarSaathi bill, with totals saved
-- Per live plan: units used, daily average, panel efficiency, days live, and the red (grid) vs green (solar) bill-breakdown cards
-- **Consumption & payments table** — total paid all-time, grid-would-cost vs paid vs saved over 6 months, plus the full payment ledger with month + method
-- Installation progress tracker for non-live plans (survey → allotment → install → net-meter → live)
-- Manage plans: request removal, cancel bookings, view all district rates (grid vs 65%)
+## Backend integration
 
-## Admin panel (`#/admin`) — comprehensive
+When served by the backend:
 
-Seven tabs, everything in one place:
+1. The server reads the signed-in user from the `ss_session` cookie.
+2. It injects `window.__SS_BOOTSTRAP__` into `index.html` before `api-client.js`.
+3. `api-client.js` hydrates the synchronous localStorage cache and exposes `window.SSAPI`.
+4. All mutations go through relative `/api` requests on the same origin.
 
-1. **Bookings** — all bookings with search, status dropdown updates, resource allotment modal (equipment suggestions, technician, install date), mark-installed, delete
-2. **Notifications** — auto-generated feed with unread badge + mark-all-read
-3. **Removal Requests** — approve/reject with admin notes (approval removes the booking)
-4. **Users** — full roster + **View** drill-down per user: bookings, live MRR, payment history, 6-month savings
-5. **Payments** — full ledger: collected vs pending vs expected (6-mo run-rate), search, status filter, mark-paid
-6. **Analytics** — pipeline funnel (bookings per stage), revenue by district, and a **grid-vs-solar savings table per customer**
-7. **District Rates** — grid rate vs 65% rate vs savings per unit for all 20 districts
-
-Header stats: users, bookings, live, pending, **MRR + ARR**, **ARPU**, **collected payments**.
-Actions: **Re-seed demo data**, **Export JSON** (bookings, payments, requests, notifications, users).
-
-## How pricing works
-
-- `district.gridRate` (₹/unit, 20 districts) × **0.65** = the customer's locked rate
-- Example: Pune grid ₹8.5/unit → SolarSaathi ₹5.53/unit → a 300-unit home pays ₹1,658/mo instead of ₹2,550
-- Customer savings = units × (gridRate − ourRate); the dashboards compute this from seeded 6-month usage series with seasonal variation (summer peak)
+No frontend environment variables are required for this shared-server setup.

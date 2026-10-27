@@ -254,19 +254,54 @@
     if(diff<86400) return Math.floor(diff/3600)+'h ago'; return d.toLocaleDateString('en-IN');
   }
 
+  // ——— Server mode (index.html served by the backend, see api-client.js) ———
+  // SSServerMode() is live: true while the backend answers, false in
+  // static localStorage mode or after the backend becomes unreachable.
+  async function serverCall(fn, fallback='Something went wrong'){
+    try{ return await fn(); }
+    catch(err){
+      if(err && err.offline){ enterLocalMode(); return null; }
+      toast(err.message || fallback, 'error'); return null;
+    }
+  }
+  function enterLocalMode(){
+    if(window.__SS_ENTERED_LOCAL__) return;
+    window.__SS_ENTERED_LOCAL__ = true;
+    toast('Backend unavailable — continuing with local demo data','error');
+    try{ router(); }catch(_){ /* ignore */ }
+  }
+  function renderModePill(){
+    let pill = document.getElementById('ssModePill');
+    if(!pill){
+      pill = document.createElement('div');
+      pill.id = 'ssModePill';
+      pill.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:10000;font:600 11px/1.4 system-ui,sans-serif;padding:6px 10px;border-radius:999px;box-shadow:0 2px 10px rgba(0,0,0,.18);';
+      document.body.appendChild(pill);
+    }
+    const online = window.SSServerMode ? window.SSServerMode() : false;
+    pill.textContent = online ? '● Backend connected' : '● Local demo mode';
+    pill.style.background = online ? '#065f46' : '#92400e';
+    pill.style.color = '#fff';
+  }
+
   // ——— Auth System ———
   const AUTH_KEY = 'solarSaathi.auth.v3';
   function getUsers(){ try{ return JSON.parse(localStorage.getItem('solarSaathi.users.v3')) || []; }catch(e){ return []; } }
   function saveUsers(u){ localStorage.setItem('solarSaathi.users.v3', JSON.stringify(u)); }
   function getSession(){ try{ return JSON.parse(localStorage.getItem(AUTH_KEY)); }catch(e){ return null; } }
   function saveSession(s){ localStorage.setItem(AUTH_KEY, JSON.stringify(s)); }
-  function logout(){ localStorage.removeItem(AUTH_KEY); location.hash='#/'; location.reload(); }
+  function logout(){
+    const finish = ()=>{ localStorage.removeItem(AUTH_KEY); location.hash='#/'; location.reload(); };
+    if(SSServerMode() && window.SSAPI) window.SSAPI.post('/auth/logout').then(finish, finish);
+    else finish();
+  }
   function currentUser(){ return getSession(); }
   function isAdmin(){ const u=currentUser(); return u && u.role==='admin'; }
   function isLoggedIn(){ return !!currentUser(); }
 
   // seed default admin + demo user
   (function seedUsers(){
+    if(SSServerMode()) return; // server snapshot already contains users
     const users = getUsers();
     if(!users.find(u=>u.email==='admin@admin.com')){
       users.push({ id:'USR-admin', name:'Admin', email:'admin@admin.com', phone:'9999999999', password:'123', role:'admin', created:'2026-01-01' });
@@ -341,6 +376,29 @@
   if(!store.notifications) store.notifications = [];
   if(!store.payments) store.payments = [];
   function saveStore(){ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+  function upsertBooking(booking){
+    if(!booking) return;
+    const i = store.bookings.findIndex(b=>b.id===booking.id);
+    if(i >= 0) store.bookings[i] = booking; else store.bookings.unshift(booking);
+    saveStore();
+  }
+  function upsertPayment(payment){
+    if(!payment) return;
+    const i = store.payments.findIndex(p=>p.id===payment.id);
+    if(i >= 0) store.payments[i] = payment; else store.payments.unshift(payment);
+    saveStore();
+  }
+  function upsertRequest(request){
+    if(!request) return;
+    const i = store.requests.findIndex(r=>r.id===request.id);
+    if(i >= 0) store.requests[i] = request; else store.requests.unshift(request);
+    saveStore();
+  }
+  function upsertNotification(notification){
+    if(!notification) return;
+    store.notifications.unshift(notification);
+    saveStore();
+  }
 
   // ——— Seeded Demo Data (deterministic) ———
   // Creates 10 extra demo users, bookings across all statuses, payment history,
@@ -541,7 +599,7 @@
     residential: { panels: '4-16 × 450W Monocrystalline', inverter: '3-8kW Hybrid Inverter', mounting: 'Rooftop aluminium rails', wiring: 'DC/AC cables + MC4 connectors', meter: 'Net meter (bi-directional)', misc: 'Earthing kit, surge protector, DC isolator' },
     industrial: { panels: '20-200 × 550W Monocrystalline', inverter: '10-100kW String Inverter', mounting: 'Heavy-duty ground/roof mount', wiring: 'HT/LT cables, combiner box', meter: 'CT-meter for 3-phase', misc: 'Earthing kit, lightning arrestor, SCADA-ready' }
   };
-  seedDemoData(); // run here so EQUIPMENT (above) is initialized first
+  if(!SSServerMode()) seedDemoData(); // run here so EQUIPMENT (above) is initialized first
   function allotResources(bookingId, data){
     const bk = store.bookings.find(b=>b.id===bookingId);
     if(!bk) return;
@@ -678,10 +736,19 @@
       setTimeout(()=>{ if(form) form.classList.add('active'); }, 500);
     }, 2200);
     // Login submit
-    document.getElementById('sevaLoginSubmit')?.addEventListener('submit', e=>{
+    document.getElementById('sevaLoginSubmit')?.addEventListener('submit', async e=>{
       e.preventDefault();
       const email = document.getElementById('sevaEmail').value.trim().toLowerCase();
       const pass = document.getElementById('sevaPass').value;
+      if(SSServerMode()){
+        const res = await serverCall(()=>window.SSAPI.post('/auth/login', { email, password: pass }));
+        if(!res) return;
+        saveSession(res.user);
+        toast('Welcome, '+res.user.name+'! ☀️','success');
+        location.hash = res.user.role==='admin' ? '#/admin' : '#/vendorapp';
+        location.reload();
+        return;
+      }
       const users = getUsers();
       const user = users.find(u=> u.email.toLowerCase()===email && u.password===pass);
       if(!user){ toast('Invalid email or password','error'); return; }
@@ -744,13 +811,22 @@
         </div>
       </section>
     </div>`;
-    document.getElementById('regForm').addEventListener('submit', e=>{
+    document.getElementById('regForm').addEventListener('submit', async e=>{
       e.preventDefault();
       const name = document.getElementById('regName').value.trim();
       const email = document.getElementById('regEmail').value.trim().toLowerCase();
       const phone = document.getElementById('regPhone').value.trim();
       const pass = document.getElementById('regPass').value;
       const district = document.getElementById('regDistrict').value;
+      if(SSServerMode()){
+        const res = await serverCall(()=>window.SSAPI.post('/auth/register', { name, email, phone, password: pass, district }));
+        if(!res) return;
+        saveSession(res.user);
+        toast('Account created! Welcome, '+res.user.name,'success');
+        location.hash = '#/vendorapp';
+        location.reload();
+        return;
+      }
       const users = getUsers();
       if(users.find(u=>u.email.toLowerCase()===email)){ toast('Email already registered','error'); return; }
       const user = { id:'USR-'+Math.random().toString(36).slice(2,7), name, email, phone, password:pass, role:'user', district, created:new Date().toISOString().slice(0,10) };
@@ -992,10 +1068,30 @@
     const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
     const dateInput = document.querySelector('#bookForm input[name="date"]');
     if(dateInput){ dateInput.min = tomorrow.toISOString().slice(0,10); dateInput.value = tomorrow.toISOString().slice(0,10); }
-    document.getElementById('bookForm').addEventListener('submit', e=>{
+    document.getElementById('bookForm').addEventListener('submit', async e=>{
       e.preventDefault();
       const fd = new FormData(e.target);
       const d = Object.fromEntries(fd.entries());
+      if(SSServerMode()){
+        const res = await serverCall(()=>window.SSAPI.post('/bookings', {
+          planId: d.planId,
+          district: d.district,
+          units: parseInt(d.units,10),
+          name: d.name,
+          phone: d.phone,
+          address: d.address,
+          pincode: d.pincode,
+          date: d.date,
+          roofType: d.roofType,
+          note: d.note
+        }));
+        if(!res) return;
+        upsertBooking(res.booking);
+        closeModal();
+        toast('Booked! '+res.booking.planName+' — '+res.booking.id,'success');
+        location.hash = '#/vendorapp';
+        return;
+      }
       const booking = {
         id:'BK-'+Math.random().toString(36).slice(2,7).toUpperCase(),
         userId: user.id,
@@ -1428,17 +1524,26 @@
 
     // Payment options
     $view.querySelectorAll('.pay-option').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
+      btn.addEventListener('click', async ()=>{
         const method = btn.getAttribute('data-method');
         const bId = btn.getAttribute('data-booking');
         const bk = store.bookings.find(b=>b.id===bId);
-        const payId = 'PAY-'+Math.random().toString(36).slice(2,7).toUpperCase();
-        store.payments.push({ id:payId, bookingId:bId, userId:user.id, amount:bk.monthlyAmount, method, status:'Pending', created:new Date().toISOString() });
-        saveStore();
+        if(!bk) return;
+        let payment;
+        if(SSServerMode()){
+          const res = await serverCall(()=>window.SSAPI.post('/payments', { bookingId: bId, method }));
+          if(!res) return;
+          payment = res.payment;
+          upsertPayment(payment);
+        } else {
+          payment = { id:'PAY-'+Math.random().toString(36).slice(2,7).toUpperCase(), bookingId:bId, userId:user.id, amount:bk.monthlyAmount, method, status:'Pending', created:new Date().toISOString() };
+          store.payments.push(payment);
+          saveStore();
+        }
         const statusEl = document.getElementById('payStatus-'+bId);
         if(statusEl){
           statusEl.innerHTML = `<div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
-            <b>✓ Payment initiated</b> • ${payId} • Method: ${method.toUpperCase()} • Amount: ${fmt(bk.monthlyAmount)}
+            <b>✓ Payment initiated</b> • ${payment.id} • Method: ${method.toUpperCase()} • Amount: ${fmt(bk.monthlyAmount)}
             <br/><span class="text-xs text-emerald-500">You will receive a confirmation shortly.</span>
           </div>`;
         }
@@ -1454,12 +1559,21 @@
       });
     });
 
-    document.getElementById('removalForm')?.addEventListener('submit', e=>{
+    document.getElementById('removalForm')?.addEventListener('submit', async e=>{
       e.preventDefault();
       const bookingId = document.getElementById('removalBooking').value;
       const reason = document.getElementById('removalReason').value;
       const note = document.getElementById('removalNote').value;
       if(!bookingId){ toast('Select a plan to remove','error'); return; }
+      if(SSServerMode()){
+        const res = await serverCall(()=>window.SSAPI.post('/requests', { bookingId, type:'Removal', reason, note }));
+        if(!res) return;
+        upsertRequest(res.request);
+        toast('Removal request submitted! Admin will review within 48h.','success');
+        document.getElementById('removalForm').reset();
+        renderDashboard();
+        return;
+      }
       const booking = store.bookings.find(b=>b.id===bookingId);
       const request = {
         id:'REQ-'+Math.random().toString(36).slice(2,7).toUpperCase(),
@@ -1482,12 +1596,18 @@
     });
 
     $view.querySelectorAll('.cancel-booking').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
+      btn.addEventListener('click', async ()=>{
         const id = btn.getAttribute('data-id');
         if(!confirm('Cancel booking '+id+'?')) return;
-        const bk = store.bookings.find(b=>b.id===id);
-        if(bk) bk.status = 'Cancelled';
-        saveStore();
+        if(SSServerMode()){
+          const res = await serverCall(()=>window.SSAPI.patch('/bookings/'+encodeURIComponent(id), { status:'Cancelled' }));
+          if(!res) return;
+          upsertBooking(res.booking);
+        } else {
+          const bk = store.bookings.find(b=>b.id===id);
+          if(bk) bk.status = 'Cancelled';
+          saveStore();
+        }
         toast('Booking cancelled');
         renderDashboard();
       });
@@ -1575,6 +1695,7 @@
             <p class="text-sm text-zinc-500 mt-1">Welcome, <b>${esc(user.name)}</b> • ${allUsers.length} users • ${allBookings.length} bookings • ${fmt(totalMRR)}/mo MRR • ${fmt(totalMRR*12)} ARR</p>
           </div>
           <div class="flex gap-2">
+            <a href="#/ops" class="btn-secondary rounded-full">Ops Console</a>
             <button id="reseedBtn" class="btn-secondary rounded-full">Re-seed demo data</button>
             <button id="exportBtn" class="btn-secondary rounded-full">Export JSON</button>
             <button id="logoutBtn" class="btn-ghost">Logout</button>
@@ -1857,7 +1978,11 @@
     });
 
     // mark all notifications read
-    document.getElementById('markAllRead')?.addEventListener('click', ()=>{
+    document.getElementById('markAllRead')?.addEventListener('click', async ()=>{
+      if(SSServerMode()){
+        const res = await serverCall(()=>window.SSAPI.patch('/notifications/read-all', {}));
+        if(!res) return;
+      }
       markAllRead(); renderAdmin(); toast('All notifications marked as read');
     });
 
@@ -1895,16 +2020,21 @@
       }).join('') || '<tr><td colspan="8" class="p-8 text-center text-zinc-500">No bookings</td></tr>';
       // bind status changes
       document.querySelectorAll('#adminBookingsBody [data-status]').forEach(sel=>{
-        sel.addEventListener('change', ()=>{
+        sel.addEventListener('change', async ()=>{
           const bk = allBookings.find(x=>x.id===sel.getAttribute('data-status'));
-          if(bk){
-            const oldStatus = bk.status;
-            bk.status=sel.value;
-            if(sel.value==='Installed') bk.installedDate = new Date().toISOString();
-            saveStore();
-            addNotification(sel.value==='Live' ? 'live' : 'status', 'Status Updated', `${bk.planName} for ${bk.name} — now "${sel.value}"`, bk.id);
+          if(!bk) return;
+          if(SSServerMode()){
+            const res = await serverCall(()=>window.SSAPI.patch('/bookings/'+encodeURIComponent(bk.id), { status: sel.value }));
+            if(!res){ sel.value = bk.status; return; }
+            upsertBooking(res.booking);
             toast('Updated '+bk.id); drawBookings();
+            return;
           }
+          bk.status=sel.value;
+          if(sel.value==='Installed') bk.installedDate = new Date().toISOString();
+          saveStore();
+          addNotification(sel.value==='Live' ? 'live' : 'status', 'Status Updated', `${bk.planName} for ${bk.name} — now "${sel.value}"`, bk.id);
+          toast('Updated '+bk.id); drawBookings();
         });
       });
       // bind allot buttons
@@ -1950,10 +2080,19 @@
               </div>
             </form>
           `);
-          document.getElementById('allotForm').addEventListener('submit', e=>{
+          document.getElementById('allotForm').addEventListener('submit', async e=>{
             e.preventDefault();
             const fd = new FormData(e.target);
             const d = Object.fromEntries(fd.entries());
+            if(SSServerMode()){
+              const res = await serverCall(()=>window.SSAPI.post('/bookings/'+encodeURIComponent(bId)+'/allot', d));
+              if(!res) return;
+              upsertBooking(res.booking);
+              toast('Resources allotted for '+bk.id+'! Customer notified.', 'success');
+              closeModal();
+              renderAdmin();
+              return;
+            }
             allotResources(bId, d);
             toast('Resources allotted for '+bk.id+'! Customer notified.', 'success');
             closeModal();
@@ -1963,24 +2102,37 @@
       });
       // bind install buttons
       document.querySelectorAll('.install-btn').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
+        btn.addEventListener('click', async ()=>{
           const bId = btn.getAttribute('data-id');
           const bk = allBookings.find(b=>b.id===bId);
-          if(confirm('Mark installation complete for '+bk.name+'? This will make the system LIVE.')){
-            markInstalled(bId);
+          if(!confirm('Mark installation complete for '+bk.name+'? This will make the system LIVE.')) return;
+          if(SSServerMode()){
+            const res = await serverCall(()=>window.SSAPI.post('/bookings/'+encodeURIComponent(bId)+'/install', {}));
+            if(!res) return;
+            upsertBooking(res.booking);
             toast('Installation marked complete! '+bk.name+' is now LIVE.', 'success');
             renderAdmin();
+            return;
           }
+          markInstalled(bId);
+          toast('Installation marked complete! '+bk.name+' is now LIVE.', 'success');
+          renderAdmin();
         });
       });
       // bind delete
       document.querySelectorAll('#adminBookingsBody [data-del]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
+        btn.addEventListener('click', async ()=>{
           const id=btn.getAttribute('data-del');
-          if(confirm('Delete '+id+'?')){
+          if(!confirm('Delete '+id+'?')) return;
+          if(SSServerMode()){
+            const res = await serverCall(()=>window.SSAPI.del('/bookings/'+encodeURIComponent(id)));
+            if(!res) return;
             store.bookings = store.bookings.filter(x=>x.id!==id);
-            saveStore(); drawBookings(); toast('Deleted');
+            saveStore(); renderAdmin(); toast('Deleted');
+            return;
           }
+          store.bookings = store.bookings.filter(x=>x.id!==id);
+          saveStore(); drawBookings(); toast('Deleted');
         });
       });
     }
@@ -1989,39 +2141,61 @@
 
     // request actions
     document.querySelectorAll('.approve-req').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
+      btn.addEventListener('click', async ()=>{
         const id = btn.getAttribute('data-id');
         const req = store.requests.find(r=>r.id===id);
         const noteInput = document.querySelector(`[data-note="${id}"]`);
-        if(req){
-          req.status = 'Approved';
-          req.adminNote = noteInput?.value || '';
-          if(req.type==='Removal'){
-            const bk = store.bookings.find(b=>b.id===req.bookingId);
-            if(bk) bk.status = 'Removed';
-          }
-          saveStore();
+        const adminNote = noteInput?.value || '';
+        if(!req) return;
+        if(SSServerMode()){
+          const res = await serverCall(()=>window.SSAPI.patch('/requests/'+encodeURIComponent(id), { status:'Approved', adminNote }));
+          if(!res) return;
+          upsertRequest(res.request);
+          if(res.booking) upsertBooking(res.booking);
           toast('Request approved');
           renderAdmin();
+          return;
         }
+        req.status = 'Approved';
+        req.adminNote = adminNote;
+        if(req.type==='Removal'){
+          const bk = store.bookings.find(b=>b.id===req.bookingId);
+          if(bk) bk.status = 'Removed';
+        }
+        saveStore();
+        toast('Request approved');
+        renderAdmin();
       });
     });
     document.querySelectorAll('.reject-req').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
+      btn.addEventListener('click', async ()=>{
         const id = btn.getAttribute('data-id');
         const req = store.requests.find(r=>r.id===id);
         const noteInput = document.querySelector(`[data-note="${id}"]`);
-        if(req){
-          req.status = 'Rejected';
-          req.adminNote = noteInput?.value || '';
-          saveStore();
+        const adminNote = noteInput?.value || '';
+        if(!req) return;
+        if(SSServerMode()){
+          const res = await serverCall(()=>window.SSAPI.patch('/requests/'+encodeURIComponent(id), { status:'Rejected', adminNote }));
+          if(!res) return;
+          upsertRequest(res.request);
           toast('Request rejected');
           renderAdmin();
+          return;
         }
+        req.status = 'Rejected';
+        req.adminNote = adminNote;
+        saveStore();
+        toast('Request rejected');
+        renderAdmin();
       });
     });
 
-    document.getElementById('exportBtn')?.addEventListener('click', ()=>{
+    document.getElementById('exportBtn')?.addEventListener('click', async ()=>{
+      if(SSServerMode()){
+        try{ await window.SSAPI.download('/admin/export', 'solarSaathi-admin-export.json'); }
+        catch(err){ toast(err.message || 'Export failed','error'); }
+        return;
+      }
       const data = { bookings: store.bookings, requests: store.requests, notifications: store.notifications, users: getUsers() };
       const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob);
@@ -2057,9 +2231,19 @@
         </tr>`;
       }).join('') || '<tr><td colspan="8" class="p-8 text-center text-zinc-500">No payments found</td></tr>';
       body.querySelectorAll('.pay-mark').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const p = store.payments.find(x=>x.id===btn.getAttribute('data-id'));
-          if(p){ p.status='Paid'; saveStore(); toast(p.id+' marked paid','success'); renderAdmin(); }
+        btn.addEventListener('click', async ()=>{
+          const id = btn.getAttribute('data-id');
+          const p = store.payments.find(x=>x.id===id);
+          if(!p) return;
+          if(SSServerMode()){
+            const res = await serverCall(()=>window.SSAPI.patch('/payments/'+encodeURIComponent(id)+'/paid', {}));
+            if(!res) return;
+            upsertPayment(res.payment);
+            toast(id+' marked paid','success');
+            renderAdmin();
+            return;
+          }
+          p.status='Paid'; saveStore(); toast(p.id+' marked paid','success'); renderAdmin();
         });
       });
     }
@@ -2118,15 +2302,21 @@
     });
 
     // ——— Re-seed demo data ———
-    document.getElementById('reseedBtn')?.addEventListener('click', ()=>{
-      if(confirm('Wipe ALL current bookings/payments/requests/notifications and regenerate demo data?')){
-        store.bookings = []; store.requests = []; store.notifications = []; store.payments = [];
-        saveStore();
-        localStorage.removeItem(SEED_FLAG);
-        seedDemoData(true);
+    document.getElementById('reseedBtn')?.addEventListener('click', async ()=>{
+      if(!confirm('Wipe ALL current bookings/payments/requests/notifications and regenerate demo data?')) return;
+      if(SSServerMode()){
+        const res = await serverCall(()=>window.SSAPI.post('/admin/reseed', {}));
+        if(!res) return;
         toast('Demo data re-seeded!','success');
-        renderAdmin();
+        setTimeout(()=>location.reload(), 500);
+        return;
       }
+      store.bookings = []; store.requests = []; store.notifications = []; store.payments = [];
+      saveStore();
+      localStorage.removeItem(SEED_FLAG);
+      seedDemoData(true);
+      toast('Demo data re-seeded!','success');
+      renderAdmin();
     });
 
     document.getElementById('logoutBtn')?.addEventListener('click', logout);
@@ -2385,8 +2575,14 @@
         </div>
       </section>
     </div>`;
-    document.getElementById('contactForm')?.addEventListener('submit', e=>{
+    document.getElementById('contactForm')?.addEventListener('submit', async e=>{
       e.preventDefault();
+      const fd = new FormData(e.target);
+      const payload = Object.fromEntries(fd.entries());
+      if(SSServerMode()){
+        const res = await serverCall(()=>window.SSAPI.post('/contact', payload));
+        if(!res) return;
+      }
       toast('Message sent! We\'ll call you back soon.','success');
       e.target.reset();
     });
@@ -2444,12 +2640,15 @@
     });
     // update nav to show login state
     updateNavAuth();
+    renderModePill();
 
     if(path.startsWith('/login')) return pageTransition(renderLogin);
     if(path.startsWith('/register')) return pageTransition(renderRegister);
     if(path.startsWith('/plans')) return pageTransition(renderPlans);
-    if(path.startsWith('/sunalyzer')) return pageTransition(renderSunalyzer);
-    if(path.startsWith('/dashboard')) return pageTransition(renderSunalyzer);
+    if(path.startsWith('/sunalyzer') || path.startsWith('/monitor')) return pageTransition(renderSunalyzer);
+    if(path.startsWith('/dashboard')) return pageTransition(renderDashboard);
+    if(path.startsWith('/vendorapp')) return pageTransition(window.SSRenderVendorApp || renderHome);
+    if(path.startsWith('/ops')) return pageTransition(window.SSRenderOps || renderHome);
     if(path.startsWith('/admin')) return pageTransition(renderAdmin);
     if(path.startsWith('/how')) return pageTransition(renderHow);
     if(path.startsWith('/about')) return pageTransition(renderAbout);
@@ -2464,7 +2663,7 @@
     const authNav = document.getElementById('authNav');
     if(authNav){
       if(user){
-        const dashLink = user.role==='admin' ? '#/admin' : '#/vendorapp';
+        const dashLink = user.role==='admin' ? '#/ops' : '#/vendorapp';
         const dashLabel = user.role==='admin' ? 'Ops Dashboard' : 'My S.E.V.A.';
         authNav.innerHTML = `
           <a href="${dashLink}" class="btn-ghost text-sm">${dashLabel}</a>
@@ -2484,7 +2683,7 @@
       // Remove old auth links if any
       prismaNav.querySelectorAll('.prisma-login-btn, .prisma-reg-btn, .prisma-dash-btn, .prisma-logout-btn').forEach(el=>el.remove());
       if(user){
-        const dashLink = user.role==='admin' ? '#/admin' : '#/vendorapp';
+        const dashLink = user.role==='admin' ? '#/ops' : '#/vendorapp';
         const dashLabel = user.role==='admin' ? 'Ops Dashboard' : 'My S.E.V.A.';
         const dashA = document.createElement('a');
         dashA.href = dashLink; dashA.textContent = dashLabel; dashA.className = 'prisma-dash-btn';
@@ -2505,6 +2704,7 @@
   }
 
   window.addEventListener('hashchange', router);
+  window.SSRoute = router;
   if(document.readyState !== 'loading') router(); else document.addEventListener('DOMContentLoaded', router);
   window.closeModal = closeModal;
 

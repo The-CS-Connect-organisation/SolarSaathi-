@@ -53,6 +53,41 @@
     return v;
   }
 
+  // ——— Server mode helpers (SSServerMode() is live, see api-client.js) ———
+  const API = window.SSAPI;
+  async function safeCall(fn, fallback='Something went wrong'){
+    try{ return await fn(); }
+    catch(err){
+      if(err && err.offline){
+        if(!window.__SS_ENTERED_LOCAL__){
+          window.__SS_ENTERED_LOCAL__ = true;
+          toast('Backend unavailable — continuing with local demo data','error');
+        }
+        try{ window.SSRoute && window.SSRoute(); }catch(_){ /* ignore */ }
+        return null;
+      }
+      toast(err.message || fallback, 'error'); return null;
+    }
+  }
+  function applyVendor(v){
+    if(!v) return;
+    const u = SS.currentUser();
+    if(!u) return;
+    updateVendor(u.id, x=>Object.assign(x, v));
+  }
+  async function pullVendor(){
+    if(!SSServerMode()) return null;
+    const res = await safeCall(()=>API.get('/vendor/me'));
+    if(!res) return null;
+    applyVendor(res.vendor);
+    if(res.booking){
+      const i = SS.store.bookings.findIndex(b=>b.id===res.booking.id);
+      if(i >= 0) SS.store.bookings[i] = res.booking; else SS.store.bookings.unshift(res.booking);
+      SS.saveStore();
+    }
+    return res;
+  }
+
   function makeVendor(userId){
     const user = SS.getUsers().find(u=>u.id===userId) || {};
     const rnd = SS.mulberry32(String(userId).split('').reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0, 11) + 7);
@@ -87,11 +122,12 @@
     const rnd = SS.mulberry32(seed + days);
     const dailyFee = booking ? Math.max(10, Math.round(booking.monthlyAmount / 30)) : 30;
     const today = new Date(); today.setHours(0,0,0,0);
+    const paidDays = new Set(vendor.paidDays || []);
     const arr = [];
     for(let i=days-1; i>=0; i--){
       const dt = new Date(today.getTime() - i*86400000);
       const key = dt.toISOString().slice(0,10);
-      const missed = rnd() < 0.09; // ~9% missed days
+      const missed = rnd() < 0.09 && !paidDays.has(key); // ~9% missed days unless paid
       arr.push({ key, date: dt, fee: dailyFee, paid: !missed, missed });
     }
     return arr;
@@ -728,19 +764,27 @@
         <button class="va-btn va-btn-green" style="width:100%;margin-top:16px;" id="onbDone" ${onbData.date&&onbData.window?'':'disabled'}>Confirm install 🎉</button>`;
       body.querySelectorAll('[data-date]').forEach(el=>el.addEventListener('click',()=>{ onbData.date=el.getAttribute('data-date'); drawOnbStep(user); }));
       body.querySelectorAll('[data-win]').forEach(el=>el.addEventListener('click',()=>{ onbData.window=el.getAttribute('data-win'); drawOnbStep(user); }));
-      body.querySelector('#onbDone').addEventListener('click',()=>{
-        const all = loadVendors();
-        const v = all[user.id] || makeVendor(user.id);
-        v.language = onbData.language || v.language;
-        v.phone = onbData.phone || v.phone;
-        v.upiId = onbData.upiId || v.upiId;
-        v.pmSvanidhi = onbData.svanidhi || v.pmSvanidhi;
-        v.pin = onbData.pin || v.pin;
-        v.installWindow = onbData.label || '';
-        v.installDate = onbData.date;
-        v.installWindow = (onbData.window||'Morning (8–11 AM)') + ' • ' + opts.find(o=>o.val===onbData.date)?.label;
-        v.onboarded = true;
-        all[user.id] = v; saveVendors(all);
+      body.querySelector('#onbDone').addEventListener('click', async ()=>{
+        const fields = {
+          language: onbData.language || vendor.language,
+          phone: onbData.phone || vendor.phone,
+          upiId: onbData.upiId || vendor.upiId,
+          pmSvanidhi: onbData.svanidhi || vendor.pmSvanidhi,
+          pin: onbData.pin || vendor.pin,
+          installDate: onbData.date,
+          installWindow: (onbData.window||'Morning (8–11 AM)') + ' • ' + opts.find(o=>o.val===onbData.date)?.label,
+          onboarded: true
+        };
+        if(SSServerMode()){
+          const res = await safeCall(()=>API.patch('/vendor/me', fields));
+          if(!res) return;
+          applyVendor(res.vendor);
+        } else {
+          const all = loadVendors();
+          const v = all[user.id] || makeVendor(user.id);
+          Object.assign(v, fields);
+          all[user.id] = v; saveVendors(all);
+        }
         toast('Install booked! Your agent will call before coming. ☀️','success');
         onbStep = 0; onbData = {};
         location.hash = '#/vendorapp/home';
@@ -751,12 +795,22 @@
 
   // ===================== GLOBAL ACTIONS =====================
 
-  window.VAPayNow = () => {
+  window.VAPayNow = async () => {
     const u = SS.currentUser(); const v = getVendor(u.id);
     const booking = vendorBooking(u.id);
     const ledger = dailyLedger(v, booking, 30);
     const today = ledger[ledger.length-1];
     if(v.balance < today.fee){ toast('Wallet balance too low — top up first','error'); return; }
+    if(SSServerMode()){
+      const res = await safeCall(()=>API.post('/vendor/pay', { method:'upi' }));
+      if(!res) return;
+      applyVendor(res.vendor);
+      SS.store.payments.unshift(res.payment);
+      SS.saveStore();
+      toast('Paid ' + fmt(today.fee) + ' — today is covered ✔','success');
+      render();
+      return;
+    }
     updateVendor(u.id, x=>{ x.balance -= today.fee; });
     SS.store.payments.unshift({ id:'PAY-'+Math.random().toString(36).slice(2,7).toUpperCase(), bookingId: booking?.id||'—', userId:u.id, amount:today.fee, method:'upi', status:'Paid', created:new Date().toISOString() });
     SS.saveStore();
@@ -777,16 +831,29 @@
     document.querySelectorAll('.topup-amt').forEach(b=>b.addEventListener('click',()=>{
       document.getElementById('topupCustom').value = b.getAttribute('data-amt');
     }));
-    document.getElementById('topupGo').addEventListener('click',()=>{
+    document.getElementById('topupGo').addEventListener('click', async ()=>{
       const amt = parseInt(document.getElementById('topupCustom').value);
       if(!amt || amt<=0){ toast('Enter an amount','error'); return; }
-      updateVendor(u.id, v=>{ v.balance += amt; });
+      if(SSServerMode()){
+        const res = await safeCall(()=>API.post('/vendor/wallet/topup', { amount: amt }));
+        if(!res) return;
+        applyVendor(res.vendor);
+      } else {
+        updateVendor(u.id, v=>{ v.balance += amt; });
+      }
       closeModal(); toast('Added ' + fmt(amt) + ' to wallet ✔','success'); render();
     });
   };
-  window.VAToggleAutopay = () => {
+  window.VAToggleAutopay = async () => {
     const u = SS.currentUser();
-    updateVendor(u.id, v=>{ v.autopay = !v.autopay; });
+    const v = getVendor(u.id);
+    if(SSServerMode()){
+      const res = await safeCall(()=>API.patch('/vendor/me', { autopay: !v.autopay }));
+      if(!res) return;
+      applyVendor(res.vendor);
+    } else {
+      updateVendor(u.id, x=>{ x.autopay = !x.autopay; });
+    }
     toast('Auto-debit ' + (getVendor(u.id).autopay ? 'ON — daily fee pulls automatically' : 'OFF — pay manually each day'));
     render();
   };
@@ -802,14 +869,20 @@
         </div>
         <button class="va-btn va-btn-ghost" style="width:100%;margin-top:10px;" onclick="closeModal()">Cancel</button>
       </div>`);
-    document.querySelectorAll('.panic-reason').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.panic-reason').forEach(b=>b.addEventListener('click', async ()=>{
       const reason = b.getAttribute('data-r');
-      const u2 = SS.currentUser();
-      updateVendor(u2.id, v=>{
-        v.issues = v.issues || [];
-        v.issues.unshift({ id:'ISS-'+Math.floor(1000+Math.random()*8999), desc:'🚨 PANIC: ' + reason, status:'Agent assigned', at:Date.now(), photo:false, panic:true });
-      });
-      SS.addNotification('fault', '🚨 Panic from ' + v.stallName, reason + ' — unit ' + v.unitId + ', ' + v.city, v.unitId);
+      if(SSServerMode()){
+        const res = await safeCall(()=>API.post('/vendor/issues', { desc: reason, panic: true }));
+        if(!res) return;
+        await pullVendor();
+      } else {
+        const u2 = SS.currentUser();
+        updateVendor(u2.id, v=>{
+          v.issues = v.issues || [];
+          v.issues.unshift({ id:'ISS-'+Math.floor(1000+Math.random()*8999), desc:'🚨 PANIC: ' + reason, status:'Agent assigned', at:Date.now(), photo:false, panic:true });
+        });
+        SS.addNotification('fault', '🚨 Panic from ' + v.stallName, reason + ' — unit ' + v.unitId + ', ' + v.city, v.unitId);
+      }
       closeModal();
       openModal(`
         <div style="text-align:center;">
@@ -821,11 +894,17 @@
       render();
     }));
   };
-  window.VAMarkAlerts = () => {
+  window.VAMarkAlerts = async () => {
     const u = SS.currentUser();
-    const alerts = vendorAlerts(u.id);
-    alerts.forEach(a=>a.read=true);
-    saveAlerts(u.id, alerts);
+    if(SSServerMode()){
+      const res = await safeCall(()=>API.patch('/vendor/alerts/read-all', {}));
+      if(!res) return;
+      applyVendor({ alerts: res.alerts });
+    } else {
+      const alerts = vendorAlerts(u.id);
+      alerts.forEach(a=>a.read=true);
+      saveAlerts(u.id, alerts);
+    }
     render();
   };
   window.VALangModal = () => {
@@ -835,8 +914,15 @@
       <div style="display:grid;gap:8px;margin-top:14px;">
         ${LANGS.map(l=>`<button class="va-btn ${v.language===l.id?'va-btn-green':'va-btn-ghost'} lang-pick" data-l="${l.id}">${l.name}</button>`).join('')}
       </div>`);
-    document.querySelectorAll('.lang-pick').forEach(b=>b.addEventListener('click',()=>{
-      updateVendor(u.id, x=>{ x.language = b.getAttribute('data-l'); });
+    document.querySelectorAll('.lang-pick').forEach(b=>b.addEventListener('click', async ()=>{
+      const language = b.getAttribute('data-l');
+      if(SSServerMode()){
+        const res = await safeCall(()=>API.patch('/vendor/me', { language }));
+        if(!res) return;
+        applyVendor(res.vendor);
+      } else {
+        updateVendor(u.id, x=>{ x.language = language; });
+      }
       closeModal(); render();
     }));
   };
@@ -867,16 +953,22 @@
     // support form
     const form = document.getElementById('vaIssueForm');
     if(form){
-      form.addEventListener('submit', e=>{
+      form.addEventListener('submit', async e=>{
         e.preventDefault();
         const desc = document.getElementById('vaIssueDesc').value.trim();
         const photo = !!document.getElementById('vaIssuePhoto').value;
         if(!desc) return;
-        updateVendor(user.id, v=>{
-          v.issues = v.issues || seedIssues(v);
-          v.issues.unshift({ id:'ISS-'+Math.floor(1000+Math.random()*8999), desc, status:'Submitted', at:Date.now(), photo });
-        });
-        SS.addNotification('support', 'New issue from ' + vendor.stallName, desc + ' — unit ' + vendor.unitId, vendor.unitId);
+        if(SSServerMode()){
+          const res = await safeCall(()=>API.post('/vendor/issues', { desc, photo }));
+          if(!res) return;
+          await pullVendor();
+        } else {
+          updateVendor(user.id, v=>{
+            v.issues = v.issues || seedIssues(v);
+            v.issues.unshift({ id:'ISS-'+Math.floor(1000+Math.random()*8999), desc, status:'Submitted', at:Date.now(), photo });
+          });
+          SS.addNotification('support', 'New issue from ' + vendor.stallName, desc + ' — unit ' + vendor.unitId, vendor.unitId);
+        }
         toast('Issue submitted — ' + vendor.agent.name + ' has been notified','success');
         render();
       });
