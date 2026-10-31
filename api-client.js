@@ -6,7 +6,36 @@
 (function () {
   'use strict';
 
+  // Tunnel-ready: allow absolute backend URL.
+  // Priority: window.__SS_API_BASE__ > localStorage ss.apiBase > ?api= > '' (same-origin).
+  // Example: window.__SS_API_BASE__ = 'https://xyz.trycloudflare.com'
   const bootstrap = window.__SS_BOOTSTRAP__ || null;
+  function resolveApiBase() {
+    try {
+      const qs = new URLSearchParams(window.location.search || '');
+      const q = qs.get('api');
+      if (q) {
+        const clean = q.replace(/\/+$/, '');
+        try { localStorage.setItem('ss.apiBase', clean); } catch (_) { /* ignore */ }
+        return clean;
+      }
+    } catch (_) { /* ignore */ }
+    if (window.__SS_API_BASE__) return String(window.__SS_API_BASE__).replace(/\/+$/, '');
+    try {
+      const saved = localStorage.getItem('ss.apiBase');
+      if (saved) return String(saved).replace(/\/+$/, '');
+    } catch (_) { /* ignore */ }
+    return '';
+  }
+  const API_BASE = resolveApiBase();
+  window.__SS_API_BASE__ = API_BASE || window.__SS_API_BASE__ || '';
+  // Helper for UI: SSSetApiBase('https://xyz.trycloudflare.com') then reload.
+  window.SSSetApiBase = function (url) {
+    try {
+      if (!url) localStorage.removeItem('ss.apiBase');
+      else localStorage.setItem('ss.apiBase', String(url).replace(/\/+$/, ''));
+    } catch (_) { /* ignore */ }
+  };
 
   function write(key, value) {
     try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* storage may be unavailable */ }
@@ -72,13 +101,14 @@
       headers['Content-Type'] = 'application/json';
       body = JSON.stringify(options.body);
     }
+    const url = (API_BASE || '') + '/api' + path;
     let res;
     try {
-      res = await fetch('/api' + path, {
+      res = await fetch(url, {
         method,
         headers,
         body,
-        credentials: 'same-origin',
+        credentials: 'include',
         cache: 'no-store'
       });
     } catch (err) {
@@ -103,7 +133,7 @@
   }
 
   function download(path, filename) {
-    return fetch('/api' + path, { credentials: 'same-origin', cache: 'no-store' })
+    return fetch((API_BASE || '') + '/api' + path, { credentials: 'include', cache: 'no-store' })
       .catch(err => {
         if (isNetworkError(err)) {
           setOffline();
@@ -126,7 +156,8 @@
   }
 
   window.SSAPI = {
-    enabled: !!bootstrap,
+    enabled: !!bootstrap || !!API_BASE,
+    apiBase: API_BASE,
     bootstrap,
     request,
     get: path => request(path),
@@ -135,4 +166,29 @@
     del: path => request(path, { method: 'DELETE' }),
     download
   };
+
+  // Tunnel mode: deployed frontend has no injected bootstrap, so hydrate
+  // from GET <API_BASE>/api/bootstrap once, then reload once.
+  if (!bootstrap && API_BASE && !window.__SS_BOOTSTRAP_FETCHED__) {
+    window.__SS_BOOTSTRAP_FETCHED__ = true;
+    window.__SS_SERVER_MODE__ = true;
+    fetch(API_BASE + '/api/bootstrap', { credentials: 'include', cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (!data) { setOffline(); return; }
+        if (data.user) write('solarSaathi.auth.v3', data.user);
+        write('solarSaathi.users.v3', data.users || []);
+        write('solarSaathi.v3', data.store || { bookings: [], payments: [], requests: [], notifications: [] });
+        write('solarSaathi.seeded.v3', '1');
+        if (data.vendor && data.user) write('solarSaathi.vendor.v1', { [data.user.id]: data.vendor });
+        if (data.ops) write('solarSaathi.ops.v1', data.ops);
+        try {
+          if (!sessionStorage.getItem('ss.bootstrapped')) {
+            sessionStorage.setItem('ss.bootstrapped', '1');
+            location.reload();
+          }
+        } catch (_) { /* ignore */ }
+      })
+      .catch(() => setOffline());
+  }
 })();
